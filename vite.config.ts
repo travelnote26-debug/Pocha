@@ -15,7 +15,7 @@ export default defineConfig({
         theme_color: '#0A2612',
         background_color: '#E8F2EA',
         display: 'standalone',
-        start_url: '/',
+        start_url: '/Pocha/',
         icons: [
           {
             src: 'icons/icon-192.png',
