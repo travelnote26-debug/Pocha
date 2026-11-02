@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { DEFAULT_ORDER, type GamePhase } from '../domain/gamePhase'
+import { GAME_PHASES, type GamePhase } from '../domain/gamePhase'
 import { useDataStore } from './dataStore'
 
 export interface NewGameState {
@@ -104,7 +104,7 @@ export const useNewGame = create<NewGameState & NewGameActions>((set, get) => ({
     const s = get()
     if (!hasValidSelection(s)) return
 
-    const orderedPhases = DEFAULT_ORDER.filter((phase) =>
+    const orderedPhases = GAME_PHASES.filter((phase) =>
       s.selectedPhases.some((p) => p.name === phase.name)
     )
     const gameId = useDataStore.getState().createGame(

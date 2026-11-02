@@ -186,15 +186,17 @@ export const useGameSession = create<GameSessionState>((set, get) => ({
 
     const data = useDataStore.getState()
     const newTotalScores: Record<number, number> = { ...s.totalScores }
+    const scoreRows: { playerId: number; predictedTricks: number; actualTricks: number; roundScore: number }[] = []
     const updatedPlayerData = s.playerData.map((pd) => {
       const pred = pd.prediction ?? 0
       const actual = pd.actual ?? 0
       const roundScore = calculateScore(pred, actual, numCards, pochaX2)
       const newTotal = (newTotalScores[pd.playerId] ?? 0) + roundScore
       newTotalScores[pd.playerId] = newTotal
-      data.saveScore(roundId, pd.playerId, pred, actual, roundScore)
+      scoreRows.push({ playerId: pd.playerId, predictedTricks: pred, actualTricks: actual, roundScore })
       return { ...pd, roundScore, totalScore: newTotal }
     })
+    data.saveScores(roundId, scoreRows)
 
     set({
       phase: RoundPhase.ROUND_SCORED,

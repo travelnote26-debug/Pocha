@@ -18,15 +18,17 @@ import { LoadingContent } from '../components/LoadingContent'
 import { RankBadge } from '../components/RankBadge'
 import { getPlayerIdList } from '../domain/models'
 import { useDataStore } from '../state/dataStore'
-import { feltColors as c } from '../theme/colors'
+import { feltColors as c, playerColorFor } from '../theme/colors'
 
 interface PlayerFinalScore {
+  playerId: number
   playerName: string
   totalScore: number
 }
 
 interface RoundScoreDetail {
   playerName: string
+  playerColor: string
   predicted: number
   actual: number
   score: number
@@ -65,6 +67,7 @@ export function GameOverPage() {
 
     const playerScores: PlayerFinalScore[] = players
       .map((player) => ({
+        playerId: player.id,
         playerName: player.name,
         totalScore: scoreMap[player.id] ?? 0
       }))
@@ -78,6 +81,7 @@ export function GameOverPage() {
           return player
             ? {
                 playerName: player.name,
+                playerColor: playerColorFor(player.id),
                 predicted: score.predictedTricks,
                 actual: score.actualTricks,
                 score: score.roundScore
@@ -150,7 +154,8 @@ export function GameOverPage() {
                 borderColor: rank === 0 ? c.winnerAmber : 'divider',
                 boxShadow: rank === 0 ? 6 : 2,
                 px: 2,
-                py: 1.5
+                py: 1.5,
+                borderLeft: `4px solid ${playerColorFor(player.playerId)}`
               }}
             >
               <Stack direction="row" alignItems="center" spacing={1.5}>
@@ -209,8 +214,11 @@ function RoundDetailCard({ round, themeIsDark }: { round: RoundDetail; themeIsDa
         <Box sx={{ px: 2, pb: 1.5 }}>
           <Divider sx={{ mb: 1 }} />
           {round.scores.map((score, i) => (
-            <Stack key={i} direction="row" justifyContent="space-between" sx={{ py: 0.5 }}>
-              <Typography variant="body2">{score.playerName}</Typography>
+            <Stack key={i} direction="row" justifyContent="space-between" alignItems="center" sx={{ py: 0.5 }}>
+              <Stack direction="row" alignItems="center" spacing={1}>
+                <Box sx={{ width: 8, height: 8, minWidth: 8, borderRadius: '50%', bgcolor: score.playerColor }} />
+                <Typography variant="body2">{score.playerName}</Typography>
+              </Stack>
               <Typography
                 variant="body2"
                 fontWeight={600}

@@ -2,6 +2,7 @@ import { Avatar, Box, Dialog, DialogContent, DialogTitle, Stack, Typography } fr
 import { useMemo } from 'react'
 import type { Player } from '../domain/models'
 import { useDataStore } from '../state/dataStore'
+import { playerColorFor } from '../theme/colors'
 
 export function PlayerStatsDialog({ player, onClose }: { player: Player | null; onClose: () => void }) {
   const scores = useDataStore((s) => s.db.scores)
@@ -38,7 +39,7 @@ export function PlayerStatsDialog({ player, onClose }: { player: Player | null; 
   return (
     <Dialog open onClose={onClose} maxWidth="xs" fullWidth>
       <DialogTitle fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        <Avatar sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 700 }}>
+        <Avatar sx={{ bgcolor: playerColorFor(player.id), color: '#FFFFFF', fontWeight: 700 }}>
           {player.name.charAt(0).toUpperCase()}
         </Avatar>
         {player.name}

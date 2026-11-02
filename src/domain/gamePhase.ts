@@ -11,8 +11,6 @@ export const BAJADA: GamePhase = { name: 'BAJADA', displayName: 'Bajada' }
 
 export const GAME_PHASES: GamePhase[] = [SUBIDA, RONDA_ARRIBA, BAJADA]
 
-export const DEFAULT_ORDER: GamePhase[] = [SUBIDA, RONDA_ARRIBA, BAJADA]
-
 export function parsePhases(phases: string): GamePhase[] {
   if (!phases || phases.trim() === '') return []
   return phases
@@ -20,10 +18,6 @@ export function parsePhases(phases: string): GamePhase[] {
     .map((p) => p.trim())
     .map((p) => GAME_PHASES.find((ph) => ph.name === p))
     .filter((p): p is GamePhase => p !== undefined)
-}
-
-export function phasesToString(phases: GamePhase[]): string {
-  return phases.map((p) => p.name).join(',')
 }
 
 export function phasesDisplay(phases: GamePhase[]): string {

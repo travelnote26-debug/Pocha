@@ -23,3 +23,21 @@ export const feltColors = {
   onSurfaceVariantLight: '#1E3523',
   onSurfaceVariantDark: '#B8D8BC'
 } as const
+
+export const playerPalette = [
+  '#C62828',
+  '#1565C0',
+  '#6A1B9A',
+  '#00695C',
+  '#E65100',
+  '#283593',
+  '#AD1457',
+  '#4E342E',
+  '#546E7A',
+  '#9E9D24'
+] as const
+
+export function playerColorFor(playerId: number | null | undefined): string {
+  if (playerId == null) return feltColors.feltMedium
+  return playerPalette[Math.abs(Math.trunc(playerId)) % playerPalette.length]
+}

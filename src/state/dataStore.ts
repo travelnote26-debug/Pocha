@@ -17,13 +17,7 @@ interface DataState {
   getGame: (id: number) => Game | undefined
   finishGame: (id: number) => void
   createRound: (gameId: number, roundNumber: number, numCards: number) => number
-  saveScore: (
-    roundId: number,
-    playerId: number,
-    predictedTricks: number,
-    actualTricks: number,
-    roundScore: number
-  ) => number
+  saveScores: (roundId: number, rows: PlayerRoundScoreInput[]) => number
   getRoundsByGameIdOnce: (gameId: number) => Round[]
   getScoresByRoundIdOnce: (roundId: number) => RoundPlayerScore[]
   getTotalScoresByGameId: (gameId: number) => PlayerTotalScore[]
@@ -34,6 +28,13 @@ interface DataState {
 function commit(set: (fn: (state: DataState) => Partial<DataState>) => void, db: Database) {
   saveDatabase(db)
   set(() => ({ db }))
+}
+
+export interface PlayerRoundScoreInput {
+  playerId: number
+  predictedTricks: number
+  actualTricks: number
+  roundScore: number
 }
 
 export const useDataStore = create<DataState>((set, get) => ({
@@ -93,12 +94,13 @@ export const useDataStore = create<DataState>((set, get) => ({
     return id
   },
 
-  saveScore: (roundId, playerId, predictedTricks, actualTricks, roundScore) => {
+  saveScores: (roundId, rows) => {
     const db = { ...get().db }
-    const id = nextId(db.scores)
-    db.scores = [...db.scores, { id, roundId, playerId, predictedTricks, actualTricks, roundScore }]
+    let id = nextId(db.scores)
+    const saved = rows.map((row) => ({ id: id++, roundId, ...row }))
+    db.scores = [...db.scores, ...saved]
     commit(set, db)
-    return id
+    return saved[0]?.id ?? id
   },
 
   getRoundsByGameIdOnce: (gameId) =>

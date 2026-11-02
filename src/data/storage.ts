@@ -26,14 +26,6 @@ function read<T>(key: string, fallback: T): T {
   }
 }
 
-function write<T>(key: string, value: T): void {
-  try {
-    localStorage.setItem(key, JSON.stringify(value))
-  } catch {
-    // almacenamiento no disponible: ignorar
-  }
-}
-
 export function loadDatabase(): Database {
   return {
     players: read<Player[]>(KEYS.players, []),
@@ -44,19 +36,22 @@ export function loadDatabase(): Database {
 }
 
 export function saveDatabase(db: Database): void {
-  write(KEYS.players, db.players)
-  write(KEYS.games, db.games)
-  write(KEYS.rounds, db.rounds)
-  write(KEYS.scores, db.scores)
+  const entries: [string, unknown][] = [
+    [KEYS.players, db.players],
+    [KEYS.games, db.games],
+    [KEYS.rounds, db.rounds],
+    [KEYS.scores, db.scores]
+  ]
+  for (const [key, value] of entries) {
+    try {
+      const serialized = JSON.stringify(value)
+      if (localStorage.getItem(key) !== serialized) localStorage.setItem(key, serialized)
+    } catch {
+      // almacenamiento no disponible: ignorar
+    }
+  }
 }
 
 export function nextId(items: { id: number }[]): number {
   return items.reduce((max, item) => Math.max(max, item.id), 0) + 1
-}
-
-export function clearDatabase(): void {
-  localStorage.removeItem(KEYS.players)
-  localStorage.removeItem(KEYS.games)
-  localStorage.removeItem(KEYS.rounds)
-  localStorage.removeItem(KEYS.scores)
 }

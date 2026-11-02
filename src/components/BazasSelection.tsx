@@ -1,5 +1,5 @@
 import { Avatar, Box, Button, Card, Chip, Paper, Stack, Typography } from '@mui/material'
-import { useState } from 'react'
+import { memo, useCallback, useState } from 'react'
 import { feltColors as c } from '../theme/colors'
 import { hapticTick } from '../utils/haptic'
 
@@ -8,6 +8,7 @@ interface BazasSelectionProps {
   confirmText: string
   turnOrder: number[]
   playerName: (index: number) => string
+  playerColor: (index: number) => string
   getValue: (index: number) => number | null
   onValueChange: (index: number, value: number) => void
   isChipEnabled: (index: number, value: number) => boolean
@@ -23,6 +24,7 @@ export function BazasSelection({
   confirmText,
   turnOrder,
   playerName,
+  playerColor,
   getValue,
   onValueChange,
   isChipEnabled,
@@ -33,6 +35,7 @@ export function BazasSelection({
   onConfirm
 }: BazasSelectionProps) {
   const [focusedPosition, setFocusedPosition] = useState(0)
+  const setFocused = useCallback((position: number) => setFocusedPosition(position), [])
   if (turnOrder.length === 0) return null
 
   const clampedPosition = Math.min(focusedPosition, turnOrder.length - 1)
@@ -71,8 +74,8 @@ export function BazasSelection({
           <Stack direction="row" alignItems="center" spacing={1}>
             <Avatar
               sx={{
-                bgcolor: 'secondary.main',
-                color: 'secondary.contrastText',
+                bgcolor: playerColor(focusedPlayerIndex),
+                color: '#FFFFFF',
                 fontWeight: 700,
                 width: 34,
                 height: 34,
@@ -150,9 +153,11 @@ export function BazasSelection({
           <PlayerBazasRow
             key={playerIndex}
             name={playerName(playerIndex)}
+            color={playerColor(playerIndex)}
             value={getValue(playerIndex)}
             isFocused={position === clampedPosition}
-            onClick={() => setFocusedPosition(position)}
+            position={position}
+            onSetPosition={setFocused}
           />
         ))}
       </Stack>
@@ -173,27 +178,32 @@ export function BazasSelection({
   )
 }
 
-function PlayerBazasRow({
+const PlayerBazasRow = memo(function PlayerBazasRow({
   name,
+  color,
   value,
   isFocused,
-  onClick
+  position,
+  onSetPosition
 }: {
   name: string
+  color: string
   value: number | null
   isFocused: boolean
-  onClick: () => void
+  position: number
+  onSetPosition: (position: number) => void
 }) {
   return (
     <Card
       variant={isFocused ? 'elevation' : 'outlined'}
       elevation={isFocused ? 4 : 0}
-      onClick={onClick}
+      onClick={() => onSetPosition(position)}
       sx={{
         borderRadius: 2,
         bgcolor: isFocused ? 'primary.main' : 'background.paper',
         color: isFocused ? 'primary.contrastText' : 'text.primary',
         borderColor: isFocused ? 'secondary.main' : 'divider',
+        borderLeft: `4px solid ${color}`,
         px: 1,
         py: 0.5,
         cursor: 'pointer'
@@ -205,8 +215,8 @@ function PlayerBazasRow({
             sx={{
               width: 30,
               height: 30,
-              bgcolor: isFocused ? 'secondary.main' : 'primary.main',
-              color: isFocused ? 'secondary.contrastText' : 'primary.contrastText',
+              bgcolor: color,
+              color: '#FFFFFF',
               fontWeight: 700,
               fontSize: 13
             }}
@@ -236,4 +246,4 @@ function PlayerBazasRow({
       </Stack>
     </Card>
   )
-}
+})

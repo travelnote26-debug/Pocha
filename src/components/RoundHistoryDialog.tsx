@@ -1,10 +1,7 @@
 import HistoryIcon from '@mui/icons-material/History'
-import CloseIcon from '@mui/icons-material/Close'
 import {
   Avatar,
   Box,
-  Dialog,
-  DialogContent,
   IconButton,
   Stack,
   Typography
@@ -13,6 +10,8 @@ import { useMemo, useState } from 'react'
 import type { Game, RoundPlayerScore } from '../domain/models'
 import { getPlayerIdList } from '../domain/models'
 import { useDataStore } from '../state/dataStore'
+import { playerColorFor } from '../theme/colors'
+import { FullscreenDialog } from './FullscreenDialog'
 
 export function RoundHistoryAction({ game }: { game: Game }) {
   const [open, setOpen] = useState(false)
@@ -58,21 +57,8 @@ function RoundHistoryDialog({ game, open, onClose }: { game: Game; open: boolean
   const playersCount = seatOrder.length
 
   return (
-    <Dialog fullScreen open={open} onClose={onClose}>
-      <Stack
-        direction="row"
-        alignItems="center"
-        sx={{ pt: 2, pr: 1, pb: 1, px: 2, bgcolor: 'primary.main', color: 'primary.contrastText' }}
-      >
-        <Typography variant="h6" fontWeight="bold" sx={{ flexGrow: 1 }}>
-          Historial de rondas
-        </Typography>
-        <IconButton edge="end" color="inherit" aria-label="Cerrar" onClick={onClose}>
-          <CloseIcon />
-        </IconButton>
-      </Stack>
-      <DialogContent sx={{ px: 1.5, pb: 4 }}>
-        {gameRounds.length === 0 ? (
+    <FullscreenDialog title="Historial de rondas" open={open} onClose={onClose}>
+      {gameRounds.length === 0 ? (
           <Typography variant="body2" color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
             Aún no hay rondas completadas.
           </Typography>
@@ -115,7 +101,7 @@ function RoundHistoryDialog({ game, open, onClose }: { game: Game; open: boolean
                         >
                           <Stack direction="row" alignItems="center" spacing={1}>
                             <Avatar
-                              sx={{ width: 26, height: 26, fontSize: 12, bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 700 }}
+                              sx={{ width: 26, height: 26, fontSize: 12, bgcolor: playerColorFor(playerId), color: '#FFFFFF', fontWeight: 700 }}
                             >
                               {playerNameById(playerId).charAt(0).toUpperCase()}
                             </Avatar>
@@ -150,7 +136,6 @@ function RoundHistoryDialog({ game, open, onClose }: { game: Game; open: boolean
             })}
           </Stack>
         )}
-      </DialogContent>
-    </Dialog>
+    </FullscreenDialog>
   )
 }

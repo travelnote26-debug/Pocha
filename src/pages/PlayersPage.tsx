@@ -22,6 +22,7 @@ import { EmptyState } from '../components/EmptyState'
 import { PlayerStatsDialog } from '../components/PlayerStatsDialog'
 import type { Player } from '../domain/models'
 import { useDataStore } from '../state/dataStore'
+import { playerColorFor } from '../theme/colors'
 
 export function PlayersPage() {
   const navigate = useNavigate()
@@ -59,7 +60,9 @@ export function PlayersPage() {
               >
                 <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 2, py: 1.5 }}>
                   <Stack direction="row" alignItems="center" spacing={1.5}>
-                    <Avatar sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 700 }}>
+                    <Avatar
+                      sx={{ bgcolor: playerColorFor(player.id), color: '#FFFFFF', fontWeight: 700 }}
+                    >
                       {player.name.charAt(0).toUpperCase()}
                     </Avatar>
                     <Box>

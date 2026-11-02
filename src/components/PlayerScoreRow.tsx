@@ -1,14 +1,15 @@
+import { memo } from 'react'
 import { Box, Card, Stack, Typography } from '@mui/material'
 import { feltColors as c } from '../theme/colors'
 
 export enum ScorePhase {
   PREDICTION = 'PREDICTION',
-  ACTUAL = 'ACTUAL',
   SCORED = 'SCORED'
 }
 
 interface PlayerScoreRowProps {
   playerName: string
+  playerColor: string
   prediction: number | null
   actual: number | null
   roundScore: number | null
@@ -16,16 +17,9 @@ interface PlayerScoreRowProps {
   phase: ScorePhase
 }
 
-function phaseColor(phase: ScorePhase, roundScore: number | null): string {
-  if (phase === ScorePhase.PREDICTION) return 'primary.main'
-  if (phase === ScorePhase.ACTUAL) return c.goldDark
-  if (roundScore != null && roundScore > 0) return c.successGreen
-  if (roundScore != null && roundScore < 0) return c.errorRed
-  return 'primary.main'
-}
-
-export function PlayerScoreRow({
+export const PlayerScoreRow = memo(function PlayerScoreRow({
   playerName,
+  playerColor,
   prediction,
   actual,
   roundScore,
@@ -43,11 +37,18 @@ export function PlayerScoreRow({
   return (
     <Card
       variant="outlined"
-      sx={{ borderRadius: 2.5, bgcolor: 'background.paper', borderColor: 'divider', boxShadow: 1, px: 1, py: 0.75 }}
+      sx={{
+        borderRadius: 2.5,
+        bgcolor: 'background.paper',
+        borderColor: 'divider',
+        boxShadow: 1,
+        px: 1,
+        py: 0.75,
+        borderLeft: `4px solid ${playerColor}`
+      }}
     >
       <Stack direction="row" alignItems="center" justifyContent="space-between">
         <Stack direction="row" alignItems="center" spacing={1} sx={{ flex: 1, minWidth: 0 }}>
-          <Box sx={{ width: 10, height: 10, minWidth: 10, borderRadius: '50%', bgcolor: phaseColor(phase, roundScore) }} />
           <Typography variant="subtitle1" fontWeight="bold" noWrap>
             {playerName}
           </Typography>
@@ -73,7 +74,7 @@ export function PlayerScoreRow({
       </Stack>
     </Card>
   )
-}
+})
 
 function StatColumn({
   label,
@@ -89,13 +90,13 @@ function StatColumn({
   boldLabel?: boolean
 }) {
   return (
-      <Box sx={{ textAlign: 'center', px: 0.75 }}>
-        <Typography variant="caption" color="text.secondary" fontWeight={boldLabel ? 700 : 400} lineHeight={1}>
-          {label}
-        </Typography>
-        <Typography variant="body1" fontWeight={strong ? 700 : 400} sx={{ color, fontSize: 16, lineHeight: 1.1 }}>
-          {value}
-        </Typography>
-      </Box>
+    <Box sx={{ textAlign: 'center', px: 0.75 }}>
+      <Typography variant="caption" color="text.secondary" fontWeight={boldLabel ? 700 : 400} lineHeight={1}>
+        {label}
+      </Typography>
+      <Typography variant="body1" fontWeight={strong ? 700 : 400} sx={{ color, fontSize: 16, lineHeight: 1.1 }}>
+        {value}
+      </Typography>
+    </Box>
   )
 }

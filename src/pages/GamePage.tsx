@@ -21,7 +21,9 @@ import { LoadingContent } from '../components/LoadingContent'
 import { PlayerScoreRow, ScorePhase } from '../components/PlayerScoreRow'
 import { RankBadge } from '../components/RankBadge'
 import { RoundHistoryAction } from '../components/RoundHistoryDialog'
+import { StandingsAction } from '../components/StandingsDialog'
 import { displayPhasesString } from '../domain/gamePhase'
+import { playerColorFor } from '../theme/colors'
 import { hapticSuccess } from '../utils/haptic'
 import { RoundPhase, useGameSession, type GameSessionState } from '../state/gameSession'
 
@@ -54,7 +56,12 @@ export function GamePage() {
       <AppTopBar
         title="Partida"
         onBack={() => setShowFinishDialog(true)}
-        actions={state.game ? <RoundHistoryAction game={state.game} /> : undefined}
+        actions={state.game ? (
+          <>
+            <StandingsAction game={state.game} />
+            <RoundHistoryAction game={state.game} />
+          </>
+        ) : undefined}
       />
 
       <Box sx={{ flexGrow: 1, px: 2, py: 1.5, display: 'flex', flexDirection: 'column' }}>
@@ -301,6 +308,7 @@ function PredictionsContent({ state, currentCards }: { state: GameSessionState; 
       confirmText="Confirmar predicciones"
       turnOrder={turnOrder}
       playerName={(i) => state.playerData[i]?.playerName ?? ''}
+      playerColor={(i) => playerColorFor(state.playerData[i]?.playerId)}
       getValue={(i) => state.playerData[i]?.prediction ?? null}
       onValueChange={state.updatePrediction}
       isChipEnabled={isChipEnabled}
@@ -337,6 +345,7 @@ function PredictionsSummaryContent({
             <PlayerScoreRow
               key={pd.playerId}
               playerName={pd.playerName}
+              playerColor={playerColorFor(pd.playerId)}
               prediction={pd.prediction}
               actual={pd.actual}
               roundScore={pd.roundScore}
@@ -368,6 +377,7 @@ function ActualsContent({ state, currentCards }: { state: GameSessionState; curr
       confirmText="Confirmar bazas"
       turnOrder={turnOrder}
       playerName={(i) => state.playerData[i]?.playerName ?? ''}
+      playerColor={(i) => playerColorFor(state.playerData[i]?.playerId)}
       getValue={(i) => state.playerData[i]?.actual ?? null}
       onValueChange={state.updateActual}
       isChipEnabled={() => true}
@@ -407,6 +417,7 @@ function ScoredContent({
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <PlayerScoreRow
                 playerName={pd.playerName}
+                playerColor={playerColorFor(pd.playerId)}
                 prediction={pd.prediction}
                 actual={pd.actual}
                 roundScore={pd.roundScore}

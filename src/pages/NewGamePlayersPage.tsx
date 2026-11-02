@@ -26,6 +26,7 @@ import { useEffect, useState } from 'react'
 import { AppTopBar } from '../components/AppTopBar'
 import { useDataStore } from '../state/dataStore'
 import { useNewGame } from '../state/newGame'
+import { playerColorFor } from '../theme/colors'
 
 export function NewGamePlayersPage() {
   const navigate = useNavigate()
@@ -149,8 +150,8 @@ export function NewGamePlayersPage() {
                         width: 32,
                         height: 32,
                         fontSize: 14,
-                        bgcolor: isDealer ? 'secondary.main' : 'action.hover',
-                        color: isDealer ? 'secondary.contrastText' : 'text.secondary',
+                        bgcolor: playerColorFor(player.id),
+                        color: '#FFFFFF',
                         fontWeight: 700
                       }}
                     >
