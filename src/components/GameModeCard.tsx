@@ -23,9 +23,9 @@ export function GameModeCard({ icon: Icon, label, description, isSelected, onCli
           borderColor: isSelected ? 'secondary.main' : 'divider'
         }}
       >
-        <CardActionArea onClick={onClick} sx={{ py: 2, px: 1.5, textAlign: 'center' }}>
-          <Stack alignItems="center" spacing={1}>
-            <Icon fontSize="large" color={isSelected ? 'inherit' : 'action'} />
+        <CardActionArea onClick={onClick} sx={{ py: 1.25, px: 1.5, textAlign: 'center' }}>
+          <Stack alignItems="center" spacing={0.75}>
+            <Icon fontSize="medium" color={isSelected ? 'inherit' : 'action'} />
             <Typography variant="subtitle1" fontWeight="bold">
               {label}
             </Typography>

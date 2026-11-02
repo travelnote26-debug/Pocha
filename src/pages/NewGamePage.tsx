@@ -60,7 +60,7 @@ export function NewGamePage() {
           <Card
             variant="outlined"
             onClick={togglePochaX2}
-            sx={{ mt: 2, borderRadius: 3, cursor: 'pointer', boxShadow: 1, px: 2, py: 2 }}
+            sx={{ mt: 2, borderRadius: 3, cursor: 'pointer', boxShadow: 1, px: 2, py: 1.25 }}
           >
             <Stack direction="row" alignItems="center" justifyContent="space-between">
               <Box sx={{ flex: 1 }}>

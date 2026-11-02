@@ -34,6 +34,8 @@ export function HomePage() {
   const deleteGame = useDataStore((s) => s.deleteGame)
   const [gameToDelete, setGameToDelete] = useState<Game | null>(null)
 
+  const sortedGames = [...games].sort((a, b) => b.startTime - a.startTime)
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>
       <AppTopBar
@@ -51,7 +53,7 @@ export function HomePage() {
         ) : (
           <Stack spacing={1.5} sx={{ py: 2 }}>
             <HeroHeaderCard gameCount={games.length} />
-            {games.map((game) => (
+            {sortedGames.map((game) => (
               <GameCard
                 key={game.id}
                 game={game}
