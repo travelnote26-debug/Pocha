@@ -13,14 +13,16 @@ import {
   Stack,
   Typography
 } from '@mui/material'
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AppTopBar } from '../components/AppTopBar'
 import { BazasSelection } from '../components/BazasSelection'
 import { LoadingContent } from '../components/LoadingContent'
 import { PlayerScoreRow, ScorePhase } from '../components/PlayerScoreRow'
 import { RankBadge } from '../components/RankBadge'
+import { RoundHistoryAction } from '../components/RoundHistoryDialog'
 import { displayPhasesString } from '../domain/gamePhase'
+import { hapticSuccess } from '../utils/haptic'
 import { RoundPhase, useGameSession, type GameSessionState } from '../state/gameSession'
 
 export function GamePage() {
@@ -42,9 +44,18 @@ export function GamePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.isFinished, state.game])
 
+  useEffect(() => {
+    if (state.phase === RoundPhase.ROUND_SCORED) hapticSuccess()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.phase])
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>
-      <AppTopBar title="Partida" onBack={() => setShowFinishDialog(true)} />
+      <AppTopBar
+        title="Partida"
+        onBack={() => setShowFinishDialog(true)}
+        actions={state.game ? <RoundHistoryAction game={state.game} /> : undefined}
+      />
 
       <Box sx={{ flexGrow: 1, px: 2, py: 1.5, display: 'flex', flexDirection: 'column' }}>
         {state.isLoading ? (
@@ -93,7 +104,7 @@ function GameContent({ state }: { state: GameSessionState }) {
   const pochaX2 = state.game?.pochaX2 === true
 
   return (
-    <Stack spacing={1.5} sx={{ flexGrow: 1, minHeight: 0 }}>
+    <Stack spacing={1} sx={{ flexGrow: 1, minHeight: 0 }}>
       <RoundInfoHeader
         phasesDisplay={phasesDisplayText}
         pochaX2={pochaX2}
@@ -101,6 +112,7 @@ function GameContent({ state }: { state: GameSessionState }) {
         roundNumber={state.currentRoundIndex + 1}
         totalRounds={totalRounds}
         dealerName={state.dealerName}
+        phase={state.phase}
       />
 
       <Box sx={{ flexGrow: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
@@ -134,7 +146,8 @@ function RoundInfoHeader({
   currentCards,
   roundNumber,
   totalRounds,
-  dealerName
+  dealerName,
+  phase
 }: {
   phasesDisplay: string
   pochaX2: boolean
@@ -142,36 +155,38 @@ function RoundInfoHeader({
   roundNumber: number
   totalRounds: number
   dealerName: string
+  phase: RoundPhase
 }) {
   return (
     <Card
       variant="outlined"
-      sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', borderColor: 'secondary.main', boxShadow: 4, borderRadius: 3, px: 2, py: 1.5 }}
+      sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', borderColor: 'secondary.main', boxShadow: 4, borderRadius: 3, px: 1.5, py: 0.75 }}
     >
       <Stack direction="row" justifyContent="space-between" alignItems="center">
         <Typography variant="caption" fontWeight="bold" color="secondary.main">
           {pochaX2 ? `${phasesDisplay} (x2)` : phasesDisplay}
         </Typography>
-        <Typography variant="subtitle2" fontWeight="bold">
+        <Typography variant="caption" fontWeight="bold">
           Ronda {roundNumber}/{totalRounds}
         </Typography>
       </Stack>
       <LinearProgress
         variant="determinate"
         value={(roundNumber / totalRounds) * 100}
-        sx={{ mt: 1.5, height: 6, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.2)', '& .MuiLinearProgress-bar': { bgcolor: 'secondary.main' } }}
+        sx={{ mt: 0.75, height: 4, borderRadius: 2, bgcolor: 'rgba(255,255,255,0.2)', '& .MuiLinearProgress-bar': { bgcolor: 'secondary.main' } }}
       />
-      <Stack direction="row" alignItems="center" justifyContent="center" spacing={1.5} sx={{ mt: 1.5 }}>
-        <Typography variant="h4" fontWeight={900}>
+      <RoundPhaseStepper phase={phase} />
+      <Stack direction="row" alignItems="center" justifyContent="center" spacing={1} sx={{ mt: 0.75 }}>
+        <Typography variant="h5" fontWeight={900} lineHeight={1.1}>
           {currentCards}
         </Typography>
         <Box>
-          <Typography variant="subtitle1" fontWeight={600}>
+          <Typography variant="caption" fontWeight={600} lineHeight={1.1}>
             {currentCards === 1 ? 'carta' : 'cartas'}
           </Typography>
           {dealerName && (
-            <Typography variant="caption" fontWeight="bold" color="secondary.main">
-              Reparte {dealerName}
+            <Typography variant="caption" fontWeight="bold" color="secondary.main" lineHeight={1.1}>
+              · Reparte {dealerName}
             </Typography>
           )}
         </Box>
@@ -180,26 +195,76 @@ function RoundInfoHeader({
   )
 }
 
+const ROUND_STEPS = ['Pred', 'Bazas', 'Puntos'] as const
+
+function RoundPhaseStepper({ phase }: { phase: RoundPhase }) {
+  const stepState = (index: number): 'upcoming' | 'active' | 'done' => {
+    switch (phase) {
+      case RoundPhase.COLLECTING_PREDICTIONS:
+        return index === 0 ? 'active' : 'upcoming'
+      case RoundPhase.PREDICTIONS_CONFIRMED:
+        return index === 0 ? 'done' : index === 1 ? 'active' : 'upcoming'
+      case RoundPhase.COLLECTING_ACTUALS:
+        return index === 0 ? 'done' : index === 1 ? 'active' : 'upcoming'
+      case RoundPhase.ROUND_SCORED:
+        return 'done'
+      default:
+        return 'upcoming'
+    }
+  }
+
+  return (
+    <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.5} sx={{ mt: 0.75 }}>
+      {ROUND_STEPS.map((label, index) => {
+        const state = stepState(index)
+        return (
+          <Fragment key={label}>
+            {index > 0 && (
+              <Box sx={{ width: 10, height: 2, borderRadius: 1, bgcolor: 'rgba(255,255,255,0.35)' }} />
+            )}
+            <Box
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 0.25,
+                px: 0.75,
+                height: 18,
+                borderRadius: 9,
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: 0.3,
+                ...(state === 'active' && { bgcolor: 'secondary.main', color: 'secondary.contrastText' }),
+                ...(state === 'done' && { bgcolor: 'rgba(255,255,255,0.25)', color: 'primary.contrastText' }),
+                ...(state === 'upcoming' && { border: 1, borderColor: 'rgba(255,255,255,0.35)', color: 'primary.contrastText', opacity: 0.7 })
+              }}
+            >
+              {state === 'done' ? '✓' : ''}
+              {label}
+            </Box>
+          </Fragment>
+        )
+      })}
+    </Stack>
+  )
+}
+
 function RoundInfoContent({ state, currentCards, onStart }: { state: GameSessionState; currentCards: number; onStart: () => void }) {
   return (
-    <Stack alignItems="center" justifyContent="center" spacing={1.5} sx={{ flexGrow: 1, textAlign: 'center' }}>
-      <Typography variant="h6" color="text.secondary">
+    <Stack alignItems="center" justifyContent="center" spacing={1} sx={{ flexGrow: 1, textAlign: 'center' }}>
+      <Typography variant="subtitle1" color="text.secondary">
         Preparados para la ronda
       </Typography>
-      <Typography variant="h2" fontWeight="bold" color="primary.main">
+      <Typography variant="h4" fontWeight="bold" color="primary.main" lineHeight={1.1}>
         {currentCards}
       </Typography>
-      <Typography variant="h6" color="text.secondary">
-        {currentCards === 1 ? 'carta' : 'cartas'}
-      </Typography>
-      <Typography variant="body1" color="text.secondary">
-        {state.players.length} jugadores
+      <Typography variant="subtitle1" color="text.secondary">
+        {currentCards === 1 ? 'carta' : 'cartas'} · {state.players.length} jugadores
       </Typography>
       <Button
         variant="contained"
         color="primary"
         onClick={onStart}
-        sx={{ mt: 2, fontWeight: 700, py: 1.25, px: 3, borderRadius: 3 }}
+        sx={{ mt: 1, fontWeight: 700, py: 1, px: 3, borderRadius: 3 }}
       >
         <CheckIcon sx={{ mr: 1 }} />
         Introducir predicciones
@@ -232,7 +297,6 @@ function PredictionsContent({ state, currentCards }: { state: GameSessionState; 
 
   return (
     <BazasSelection
-      title="Predicciones"
       headerPrefix="Predicción de"
       confirmText="Confirmar predicciones"
       turnOrder={turnOrder}
@@ -260,19 +324,13 @@ function PredictionsSummaryContent({
 }) {
   const turnOrder = rememberTurnOrder(state)
   const totalPredicted = state.playerData.reduce((sum, pd) => sum + (pd.prediction ?? 0), 0)
-  const isValid = totalPredicted !== currentCards
 
   return (
     <Stack sx={{ flexGrow: 1, minHeight: 0 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
-        <Typography variant="h6" fontWeight="bold">
-          Predicciones
-        </Typography>
-        <Typography variant="body2" fontWeight={600} color={isValid ? 'text.secondary' : 'error'}>
-          Total: {totalPredicted} / {currentCards}
-        </Typography>
-      </Stack>
-      <Stack spacing={1} sx={{ flexGrow: 1, overflowY: 'auto', py: 1 }}>
+      <Typography variant="body2" fontWeight="bold" color="text.secondary">
+        Total: {totalPredicted} / {currentCards}
+      </Typography>
+      <Stack spacing={0.75} sx={{ flexGrow: 1, minHeight: 0, overflowY: 'auto', py: 0.75 }}>
         {turnOrder.map((playerIndex) => {
           const pd = state.playerData[playerIndex]
           return (
@@ -288,7 +346,7 @@ function PredictionsSummaryContent({
           )
         })}
       </Stack>
-      <Button variant="contained" color="primary" onClick={onContinue} sx={{ fontWeight: 700, py: 1.25, borderRadius: 2.5 }}>
+      <Button variant="contained" color="primary" onClick={onContinue} sx={{ fontWeight: 700, py: 1, borderRadius: 2.5 }}>
         <CheckIcon sx={{ mr: 1 }} />
         Continuar con bazas reales
       </Button>
@@ -306,7 +364,6 @@ function ActualsContent({ state, currentCards }: { state: GameSessionState; curr
 
   return (
     <BazasSelection
-      title="Bazas reales"
       headerPrefix="Bazas de"
       confirmText="Confirmar bazas"
       turnOrder={turnOrder}
@@ -340,10 +397,10 @@ function ScoredContent({
 
   return (
     <Stack sx={{ flexGrow: 1, minHeight: 0 }}>
-      <Typography variant="h6" fontWeight="bold">
+      <Typography variant="body2" fontWeight="bold" color="text.secondary">
         Resultado de la ronda
       </Typography>
-      <Stack spacing={1} sx={{ flexGrow: 1, overflowY: 'auto', py: 1 }}>
+      <Stack spacing={0.75} sx={{ flexGrow: 1, overflowY: 'auto', py: 0.75 }}>
         {sorted.map((pd, rank) => (
           <Stack key={pd.playerId} direction="row" alignItems="center" spacing={1}>
             <RankBadge rank={rank} />
@@ -360,7 +417,7 @@ function ScoredContent({
           </Stack>
         ))}
       </Stack>
-      <Button variant="contained" color="primary" onClick={onNextRound} sx={{ fontWeight: 700, py: 1.25, borderRadius: 2.5 }}>
+      <Button variant="contained" color="primary" onClick={onNextRound} sx={{ fontWeight: 700, py: 1, borderRadius: 2.5 }}>
         <FlagIcon sx={{ mr: 1 }} />
         {isLastRound ? 'Ver resultados finales' : 'Siguiente ronda'}
       </Button>

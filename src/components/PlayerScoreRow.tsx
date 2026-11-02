@@ -43,10 +43,10 @@ export function PlayerScoreRow({
   return (
     <Card
       variant="outlined"
-      sx={{ borderRadius: 2.5, bgcolor: 'background.paper', borderColor: 'divider', boxShadow: 1, px: 1.5, py: 1.5 }}
+      sx={{ borderRadius: 2.5, bgcolor: 'background.paper', borderColor: 'divider', boxShadow: 1, px: 1, py: 0.75 }}
     >
       <Stack direction="row" alignItems="center" justifyContent="space-between">
-        <Stack direction="row" alignItems="center" spacing={1.25} sx={{ flex: 1, minWidth: 0 }}>
+        <Stack direction="row" alignItems="center" spacing={1} sx={{ flex: 1, minWidth: 0 }}>
           <Box sx={{ width: 10, height: 10, minWidth: 10, borderRadius: '50%', bgcolor: phaseColor(phase, roundScore) }} />
           <Typography variant="subtitle1" fontWeight="bold" noWrap>
             {playerName}
@@ -89,13 +89,13 @@ function StatColumn({
   boldLabel?: boolean
 }) {
   return (
-    <Box sx={{ textAlign: 'center', px: 0.75 }}>
-      <Typography variant="caption" color="text.secondary" fontWeight={boldLabel ? 700 : 400}>
-        {label}
-      </Typography>
-      <Typography variant="body1" fontWeight={strong ? 700 : 400} sx={{ color, fontSize: 17, lineHeight: 1.2 }}>
-        {value}
-      </Typography>
-    </Box>
+      <Box sx={{ textAlign: 'center', px: 0.75 }}>
+        <Typography variant="caption" color="text.secondary" fontWeight={boldLabel ? 700 : 400} lineHeight={1}>
+          {label}
+        </Typography>
+        <Typography variant="body1" fontWeight={strong ? 700 : 400} sx={{ color, fontSize: 16, lineHeight: 1.1 }}>
+          {value}
+        </Typography>
+      </Box>
   )
 }

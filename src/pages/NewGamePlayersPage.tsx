@@ -44,15 +44,10 @@ export function NewGamePlayersPage() {
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [newPlayerName, setNewPlayerName] = useState('')
 
-  if (createdGameId !== null) {
-    navigate(`/game/${createdGameId}`, { replace: true })
-    reset()
-  }
-
   useEffect(() => {
     if (createdGameId !== null) {
-      navigate(`/game/${createdGameId}`, { replace: true })
       reset()
+      navigate(`/game/${createdGameId}`, { replace: true })
     }
   }, [createdGameId, navigate, reset])
 

@@ -19,6 +19,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AppTopBar } from '../components/AppTopBar'
 import { EmptyState } from '../components/EmptyState'
+import { PlayerStatsDialog } from '../components/PlayerStatsDialog'
 import type { Player } from '../domain/models'
 import { useDataStore } from '../state/dataStore'
 
@@ -30,6 +31,7 @@ export function PlayersPage() {
 
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [playerToDelete, setPlayerToDelete] = useState<Player | null>(null)
+  const [playerStats, setPlayerStats] = useState<Player | null>(null)
   const [newPlayerName, setNewPlayerName] = useState('')
 
   const handleAdd = () => {
@@ -49,17 +51,34 @@ export function PlayersPage() {
         ) : (
           <Stack spacing={1} sx={{ py: 2 }}>
             {players.map((player) => (
-              <Card key={player.id} variant="outlined" sx={{ borderRadius: 2, boxShadow: 1 }}>
+              <Card
+                key={player.id}
+                variant="outlined"
+                sx={{ borderRadius: 2, boxShadow: 1, cursor: 'pointer' }}
+                onClick={() => setPlayerStats(player)}
+              >
                 <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 2, py: 1.5 }}>
                   <Stack direction="row" alignItems="center" spacing={1.5}>
                     <Avatar sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 700 }}>
                       {player.name.charAt(0).toUpperCase()}
                     </Avatar>
-                    <Typography variant="subtitle1" fontWeight={600}>
-                      {player.name}
-                    </Typography>
+                    <Box>
+                      <Typography variant="subtitle1" fontWeight={600}>
+                        {player.name}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Toca para ver estadísticas
+                      </Typography>
+                    </Box>
                   </Stack>
-                  <IconButton aria-label="Eliminar" color="error" onClick={() => setPlayerToDelete(player)}>
+                  <IconButton
+                    aria-label="Eliminar"
+                    color="error"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setPlayerToDelete(player)
+                    }}
+                  >
                     <DeleteOutlineIcon />
                   </IconButton>
                 </Stack>
@@ -100,6 +119,8 @@ export function PlayersPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <PlayerStatsDialog player={playerStats} onClose={() => setPlayerStats(null)} />
 
       <Dialog open={playerToDelete !== null} onClose={() => setPlayerToDelete(null)}>
         <DialogTitle fontWeight="bold">Eliminar jugador</DialogTitle>

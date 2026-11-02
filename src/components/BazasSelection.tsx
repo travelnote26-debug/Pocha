@@ -1,10 +1,9 @@
-import CheckIcon from '@mui/icons-material/Check'
 import { Avatar, Box, Button, Card, Chip, Paper, Stack, Typography } from '@mui/material'
 import { useState } from 'react'
 import { feltColors as c } from '../theme/colors'
+import { hapticTick } from '../utils/haptic'
 
 interface BazasSelectionProps {
-  title: string
   headerPrefix: string
   confirmText: string
   turnOrder: number[]
@@ -20,7 +19,6 @@ interface BazasSelectionProps {
 }
 
 export function BazasSelection({
-  title,
   headerPrefix,
   confirmText,
   turnOrder,
@@ -40,9 +38,11 @@ export function BazasSelection({
   const clampedPosition = Math.min(focusedPosition, turnOrder.length - 1)
   const focusedPlayerIndex = turnOrder[clampedPosition]
   const focusedValue = getValue(focusedPlayerIndex)
-  const chipSize = maxChips > 12 ? 42 : 50
+  const chipSize = maxChips > 12 ? 40 : 46
 
   const selectValue = (value: number) => {
+    hapticTick()
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
     onValueChange(focusedPlayerIndex, value)
     const next = Array.from({ length: turnOrder.length }, (_, i) => (clampedPosition + i + 1) % turnOrder.length).find(
       (pos) => {
@@ -54,11 +54,7 @@ export function BazasSelection({
   }
 
   return (
-    <Stack spacing={1.5} sx={{ flexGrow: 1, minHeight: 0 }}>
-      <Typography variant="h6" fontWeight="bold">
-        {title}
-      </Typography>
-
+    <Stack spacing={1} sx={{ flexGrow: 1, minHeight: 0 }}>
       <Card
         variant="outlined"
         sx={{
@@ -67,13 +63,22 @@ export function BazasSelection({
           borderColor: 'secondary.main',
           boxShadow: 4,
           borderRadius: 3,
-          px: 2,
-          py: 1.5
+          px: 1.5,
+          py: 1
         }}
       >
-        <Stack spacing={1.5}>
-          <Stack direction="row" alignItems="center" spacing={1.5}>
-            <Avatar sx={{ bgcolor: 'secondary.main', color: 'secondary.contrastText', fontWeight: 700 }}>
+        <Stack spacing={1}>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <Avatar
+              sx={{
+                bgcolor: 'secondary.main',
+                color: 'secondary.contrastText',
+                fontWeight: 700,
+                width: 34,
+                height: 34,
+                fontSize: 15
+              }}
+            >
               {playerName(focusedPlayerIndex).charAt(0).toUpperCase()}
             </Avatar>
             <Box>
@@ -86,7 +91,7 @@ export function BazasSelection({
             </Box>
           </Stack>
 
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+          <Box key={focusedPlayerIndex} sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
             {Array.from({ length: maxChips + 1 }, (_, value) => {
               const enabled = isChipEnabled(focusedPlayerIndex, value)
               const selected = focusedValue === value
@@ -117,15 +122,6 @@ export function BazasSelection({
               )
             })}
           </Box>
-
-          {focusedValue !== null && (
-            <Stack direction="row" alignItems="center" justifyContent="flex-end" spacing={0.5}>
-              <CheckIcon sx={{ fontSize: 18, color: 'secondary.main' }} />
-              <Typography variant="subtitle2" fontWeight="bold" sx={{ color: 'secondary.main' }}>
-                {focusedValue} bazas
-              </Typography>
-            </Stack>
-          )}
         </Stack>
       </Card>
 
@@ -134,7 +130,7 @@ export function BazasSelection({
         elevation={isSummaryValid ? 0 : 1}
         sx={{
           px: 1.5,
-          py: 1,
+          py: 0.5,
           bgcolor: isSummaryValid ? 'action.hover' : `${c.errorRed}26`,
           borderColor: isSummaryValid ? 'divider' : c.errorRed,
           borderRadius: 1.5
@@ -149,7 +145,7 @@ export function BazasSelection({
         </Typography>
       </Paper>
 
-      <Stack spacing={1} sx={{ flexGrow: 1, minHeight: 0, overflowY: 'auto', pr: 0.5 }}>
+      <Stack spacing={0.75} sx={{ flexGrow: 1, minHeight: 0, overflowY: 'auto', pr: 0.5 }}>
         {turnOrder.map((playerIndex, position) => (
           <PlayerBazasRow
             key={playerIndex}
@@ -165,8 +161,11 @@ export function BazasSelection({
         variant="contained"
         color="secondary"
         disabled={!confirmEnabled}
-        onClick={onConfirm}
-        sx={{ fontWeight: 700, py: 1.25, fontSize: 16, borderRadius: 2.5 }}
+        onClick={() => {
+          hapticTick()
+          onConfirm()
+        }}
+        sx={{ fontWeight: 700, py: 1, fontSize: 15, borderRadius: 2.5 }}
       >
         {confirmText}
       </Button>
@@ -195,40 +194,41 @@ function PlayerBazasRow({
         bgcolor: isFocused ? 'primary.main' : 'background.paper',
         color: isFocused ? 'primary.contrastText' : 'text.primary',
         borderColor: isFocused ? 'secondary.main' : 'divider',
-        px: 1.5,
-        py: 1,
+        px: 1,
+        py: 0.5,
         cursor: 'pointer'
       }}
     >
       <Stack direction="row" alignItems="center" justifyContent="space-between">
-        <Stack direction="row" alignItems="center" spacing={1.5}>
+        <Stack direction="row" alignItems="center" spacing={1}>
           <Avatar
             sx={{
-              width: 36,
-              height: 36,
+              width: 30,
+              height: 30,
               bgcolor: isFocused ? 'secondary.main' : 'primary.main',
               color: isFocused ? 'secondary.contrastText' : 'primary.contrastText',
               fontWeight: 700,
-              fontSize: 14
+              fontSize: 13
             }}
           >
             {name.charAt(0).toUpperCase()}
           </Avatar>
-          <Typography variant="subtitle1" fontWeight={600}>
+          <Typography variant="body1" fontWeight={600} noWrap>
             {name}
           </Typography>
         </Stack>
         <Box
           sx={{
-            width: 40,
-            height: 40,
+            width: 30,
+            height: 30,
             borderRadius: '50%',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             bgcolor: value !== null ? 'secondary.main' : 'action.hover',
             color: value !== null ? 'secondary.contrastText' : 'text.secondary',
-            fontWeight: 700
+            fontWeight: 700,
+            fontSize: 14
           }}
         >
           {value !== null ? value : '—'}
