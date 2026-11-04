@@ -1,12 +1,5 @@
-import LeaderboardIcon from '@mui/icons-material/Leaderboard'
-import {
-  Avatar,
-  Box,
-  IconButton,
-  Stack,
-  Typography
-} from '@mui/material'
-import { useMemo, useState } from 'react'
+import { Avatar, Box, Stack, Typography } from '@mui/material'
+import { useMemo } from 'react'
 import type { Game } from '../domain/models'
 import { getPlayerIdList } from '../domain/models'
 import { RankBadge } from './RankBadge'
@@ -14,19 +7,7 @@ import { useDataStore } from '../state/dataStore'
 import { playerColorFor } from '../theme/colors'
 import { FullscreenDialog } from './FullscreenDialog'
 
-export function StandingsAction({ game }: { game: Game }) {
-  const [open, setOpen] = useState(false)
-  return (
-    <>
-      <IconButton color="inherit" aria-label="Clasificación general" onClick={() => setOpen(true)}>
-        <LeaderboardIcon />
-      </IconButton>
-      <StandingsDialog game={game} open={open} onClose={() => setOpen(false)} />
-    </>
-  )
-}
-
-function StandingsDialog({ game, open, onClose }: { game: Game; open: boolean; onClose: () => void }) {
+export function StandingsDialog({ game, open, onClose }: { game: Game; open: boolean; onClose: () => void }) {
   const rounds = useDataStore((s) => s.db.rounds)
   const scores = useDataStore((s) => s.db.scores)
   const players = useDataStore((s) => s.db.players)

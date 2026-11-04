@@ -1,9 +1,10 @@
 import CasinoIcon from '@mui/icons-material/Casino'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
-import GroupIcon from '@mui/icons-material/Group'
+import MoreVertIcon from '@mui/icons-material/MoreVert'
 import PersonIcon from '@mui/icons-material/Person'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import {
+  Avatar,
   Box,
   Button,
   Card,
@@ -15,19 +16,21 @@ import {
   DialogTitle,
   Fab,
   IconButton,
+  LinearProgress,
+  Menu,
+  MenuItem,
   Stack,
-  Typography,
-  useTheme
+  Typography
 } from '@mui/material'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AppTopBar } from '../components/AppTopBar'
 import { EmptyState } from '../components/EmptyState'
-import type { Game } from '../domain/models'
+import { getPlayerIdList, type Game, type Player } from '../domain/models'
 import { displayPhasesString, parsePhases } from '../domain/gamePhase'
 import { generateRounds } from '../domain/roundGenerator'
 import { useDataStore } from '../state/dataStore'
-import { feltColors as c } from '../theme/colors'
+import { feltColors as c, playerColorFor } from '../theme/colors'
 
 interface GameSummary {
   totalRounds: number
@@ -118,9 +121,23 @@ export function HomePage() {
         }
       />
 
-      <Box sx={{ flexGrow: 1, px: 2, pb: 12 }}>
+      <Box sx={{ flexGrow: 1, px: 2, pb: 'calc(96px + env(safe-area-inset-bottom))' }}>
         {games.length === 0 ? (
-          <EmptyState title="No hay partidas registradas" subtitle="Toca 'Nueva Partida' para comenzar el recuento en la mesa" />
+          <EmptyState
+            title="No hay partidas registradas"
+            subtitle="Toca 'Nueva Partida' para comenzar el recuento en la mesa"
+            action={
+              <Button
+                variant="contained"
+                color="secondary"
+                startIcon={<PlayArrowIcon />}
+                onClick={() => navigate('/new-game')}
+                sx={{ fontWeight: 700, borderRadius: 2.5, px: 2.5 }}
+              >
+                Nueva Partida
+              </Button>
+            }
+          />
         ) : (
           <Stack spacing={1.5} sx={{ py: 2 }}>
             <HeroHeaderCard gameCount={games.length} />
@@ -128,6 +145,7 @@ export function HomePage() {
               <GameCard
                 key={game.id}
                 game={game}
+                players={players}
                 summary={summaries.get(game.id)}
                 onClick={() => (game.isFinished ? navigate(`/game-over/${game.id}`) : navigate(`/game/${game.id}`))}
                 onDelete={() => setGameToDelete(game)}
@@ -137,15 +155,17 @@ export function HomePage() {
         )}
       </Box>
 
-      <Fab
-        variant="extended"
-        color="secondary"
-        onClick={() => navigate('/new-game')}
-        sx={{ position: 'fixed', bottom: 24, right: 24, fontWeight: 700 }}
-      >
-        <PlayArrowIcon sx={{ mr: 1 }} />
-        Nueva Partida
-      </Fab>
+      {games.length > 0 && (
+        <Fab
+          variant="extended"
+          color="secondary"
+          onClick={() => navigate('/new-game')}
+          sx={{ position: 'fixed', bottom: 'calc(24px + env(safe-area-inset-bottom))', right: 24, fontWeight: 700 }}
+        >
+          <PlayArrowIcon sx={{ mr: 1 }} />
+          Nueva Partida
+        </Fab>
+      )}
 
       <Dialog open={gameToDelete !== null} onClose={() => setGameToDelete(null)}>
         <DialogTitle fontWeight="bold">Eliminar partida</DialogTitle>
@@ -211,83 +231,180 @@ function HeroHeaderCard({ gameCount }: { gameCount: number }) {
 
 function GameCard({
   game,
+  players,
   summary,
   onClick,
   onDelete
 }: {
   game: Game
+  players: Player[]
   summary?: GameSummary
   onClick: () => void
   onDelete: () => void
 }) {
-  const theme = useTheme()
+  const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null)
+  const gamePlayers = getPlayerIdList(game)
+    .map((playerId) => players.find((player) => player.id === playerId))
+    .filter((player): player is Player => player !== undefined)
+  const progressRounds = summary
+    ? game.isFinished
+      ? summary.playedRounds
+      : Math.min(summary.playedRounds + 1, summary.totalRounds)
+    : 0
+  const progress = summary && summary.totalRounds > 0
+    ? Math.min(100, Math.round((progressRounds / summary.totalRounds) * 100))
+    : 0
   const progressText = summary && summary.totalRounds > 0
     ? game.isFinished
       ? `${summary.playedRounds} de ${summary.totalRounds} rondas`
       : `Ronda ${Math.min(summary.playedRounds + 1, summary.totalRounds)} de ${summary.totalRounds}`
-    : null
+    : 'Sin rondas jugadas'
   const leaderText =
     summary?.leaderName !== null && summary?.leaderName !== undefined && summary.leaderScore !== null
       ? `Líder: ${summary.leaderName} (${summary.leaderScore} pts)`
       : null
+
   return (
-    <Card variant="outlined" sx={{ borderRadius: 3, bgcolor: 'background.paper', borderColor: 'divider', boxShadow: 3 }}>
+    <Card
+      variant="outlined"
+      sx={{ position: 'relative', borderRadius: 3, bgcolor: 'background.paper', borderColor: 'divider', boxShadow: 3 }}
+    >
       <CardActionArea onClick={onClick}>
-        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 2, py: 2 }}>
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap" useFlexGap>
-              <Box
-                sx={{
-                  px: 1,
-                  py: 0.5,
-                  borderRadius: 1,
-                  fontSize: 12,
-                  fontWeight: 700,
-                  bgcolor: game.isFinished ? 'action.hover' : `${c.successGreen}2E`,
-                  color: game.isFinished ? 'text.secondary' : c.successGreen
-                }}
-              >
-                {game.isFinished ? 'Finalizada' : 'En curso'}
+        <Box sx={{ px: 2, pr: 9, py: 1.75 }}>
+          <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap" useFlexGap>
+            <Box
+              sx={{
+                px: 1,
+                py: 0.5,
+                borderRadius: 1,
+                fontSize: 12,
+                fontWeight: 700,
+                bgcolor: game.isFinished ? 'action.hover' : `${c.successGreen}2E`,
+                color: game.isFinished ? 'text.secondary' : c.successGreen
+              }}
+            >
+              {game.isFinished ? 'Finalizada' : 'En curso'}
+            </Box>
+            {game.pochaX2 && (
+              <Box sx={{ px: 0.75, py: 0.5, borderRadius: 1, fontSize: 12, fontWeight: 700, bgcolor: 'secondary.main', color: 'secondary.contrastText' }}>
+                x2
               </Box>
-              {game.pochaX2 && (
-                <Box sx={{ px: 0.75, py: 0.5, borderRadius: 1, fontSize: 12, fontWeight: 700, bgcolor: 'secondary.main', color: 'secondary.contrastText' }}>
-                  x2
-                </Box>
-              )}
-            </Stack>
-            <Typography variant="subtitle1" fontWeight="bold" sx={{ mt: 1 }}>
+            )}
+          </Stack>
+
+          <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 0.75, minWidth: 0 }}>
+            <PlayerAvatarStack players={gamePlayers} />
+            <Typography variant="subtitle1" fontWeight="bold" noWrap sx={{ minWidth: 0 }}>
               {displayPhasesString(game.phases)}
             </Typography>
-            <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mt: 0.5, color: 'text.secondary' }}>
-              <GroupIcon sx={{ fontSize: 16 }} />
-              <Typography variant="body2" color="text.secondary">
-                {game.numPlayers} jugadores
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                · {formatGameDate(game.startTime)}
-              </Typography>
-            </Stack>
-            {(progressText || leaderText) && (
-              <Typography variant="body2" color="text.secondary" noWrap sx={{ mt: 0.25 }}>
-                {[progressText, leaderText].filter(Boolean).join(' · ')}
+          </Stack>
+
+          <Typography variant="body2" color="text.secondary" noWrap sx={{ mt: 0.5 }}>
+            {game.numPlayers} jugadores · {formatGameDate(game.startTime)}
+          </Typography>
+
+          <LinearProgress
+            variant="determinate"
+            value={progress}
+            sx={{
+              mt: 1,
+              height: 5,
+              borderRadius: 3,
+              bgcolor: 'action.hover',
+              '& .MuiLinearProgress-bar': {
+                borderRadius: 3,
+                bgcolor: game.isFinished ? 'success.main' : 'secondary.main'
+              }
+            }}
+          />
+
+          <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} sx={{ mt: 0.5 }}>
+            <Typography variant="caption" color="text.secondary" noWrap sx={{ minWidth: 0 }}>
+              {progressText}
+            </Typography>
+            {leaderText && (
+              <Typography variant="caption" fontWeight={700} color="secondary.dark" noWrap sx={{ minWidth: 0 }}>
+                {leaderText}
               </Typography>
             )}
-          </Box>
-          <Stack direction="row" alignItems="center">
-            <IconButton
-              aria-label="Eliminar"
-              onClick={(e) => {
-                e.stopPropagation()
-                onDelete()
-              }}
-              sx={{ color: theme.palette.error.main, opacity: 0.8 }}
-            >
-              <DeleteOutlineIcon />
-            </IconButton>
-            <PlayArrowIcon sx={{ color: 'secondary.main', fontSize: 28 }} />
           </Stack>
-        </Stack>
+        </Box>
       </CardActionArea>
+
+      <Stack
+        direction="row"
+        alignItems="center"
+        sx={{ position: 'absolute', top: 6, right: 6, pointerEvents: 'none' }}
+      >
+        <IconButton
+          aria-label="Más opciones"
+          onClick={(event) => setMenuAnchor(event.currentTarget)}
+          sx={{ color: 'text.secondary', pointerEvents: 'auto' }}
+        >
+          <MoreVertIcon />
+        </IconButton>
+        <PlayArrowIcon sx={{ color: 'secondary.dark', fontSize: 28 }} />
+      </Stack>
+
+      <Menu anchorEl={menuAnchor} open={menuAnchor !== null} onClose={() => setMenuAnchor(null)}>
+        <MenuItem
+          onClick={() => {
+            setMenuAnchor(null)
+            onDelete()
+          }}
+          sx={{ color: 'error.main' }}
+        >
+          <DeleteOutlineIcon fontSize="small" sx={{ mr: 1 }} />
+          Eliminar partida
+        </MenuItem>
+      </Menu>
     </Card>
+  )
+}
+
+function PlayerAvatarStack({ players }: { players: Player[] }) {
+  if (players.length === 0) return null
+  const visible = players.slice(0, 3)
+  const extra = players.length - visible.length
+
+  return (
+    <Stack direction="row" alignItems="center" sx={{ flexShrink: 0 }}>
+      {visible.map((player, index) => (
+        <Avatar
+          key={player.id}
+          sx={{
+            width: 24,
+            height: 24,
+            fontSize: 11,
+            fontWeight: 700,
+            bgcolor: playerColorFor(player.id),
+            color: '#FFFFFF',
+            border: '2px solid',
+            borderColor: 'background.paper',
+            ml: index === 0 ? 0 : -0.75,
+            zIndex: visible.length - index
+          }}
+        >
+          {player.name.charAt(0).toUpperCase()}
+        </Avatar>
+      ))}
+      {extra > 0 && (
+        <Avatar
+          sx={{
+            width: 24,
+            height: 24,
+            fontSize: 10,
+            fontWeight: 700,
+            bgcolor: 'action.selected',
+            color: 'text.secondary',
+            border: '2px solid',
+            borderColor: 'background.paper',
+            ml: -0.75
+          }}
+        >
+          +{extra}
+        </Avatar>
+      )}
+    </Stack>
   )
 }

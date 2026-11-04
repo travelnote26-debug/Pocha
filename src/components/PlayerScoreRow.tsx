@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { Box, Card, Stack, Typography } from '@mui/material'
+import { Box, Card, Typography } from '@mui/material'
 import { feltColors as c } from '../theme/colors'
 
 export enum ScorePhase {
@@ -51,15 +51,20 @@ export const PlayerScoreRow = memo(function PlayerScoreRow({
         borderLeft: `4px solid ${playerColor}`
       }}
     >
-      <Stack direction="row" alignItems="center" justifyContent="space-between">
-        <Stack direction="row" alignItems="center" spacing={1} sx={{ flex: 1, minWidth: 0 }}>
-          <Typography variant="subtitle1" fontWeight="bold" noWrap>
-            {playerName}
-          </Typography>
-        </Stack>
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1fr) 34px 42px 40px 50px',
+          alignItems: 'center',
+          columnGap: 0.5
+        }}
+      >
+        <Typography variant="subtitle1" fontWeight="bold" noWrap sx={{ minWidth: 0, pr: 0.5 }}>
+          {playerName}
+        </Typography>
 
         <StatColumn label="Pred" value={prediction !== null ? String(prediction) : '—'} strong={prediction !== null} color="primary.main" />
-        <StatColumn label="Bazas" value={actualDisplay} strong={actual !== null && phase !== ScorePhase.PREDICTION} color="secondary.main" />
+        <StatColumn label="Bazas" value={actualDisplay} strong={actual !== null && phase !== ScorePhase.PREDICTION} color="secondary.dark" />
         <StatColumn
           label="Pts"
           value={roundDisplay}
@@ -77,7 +82,7 @@ export const PlayerScoreRow = memo(function PlayerScoreRow({
           }
         />
         <StatColumn label="Total" value={String(totalScore)} strong boldLabel color="text.primary" />
-      </Stack>
+      </Box>
     </Card>
   )
 })
@@ -100,8 +105,14 @@ function StatColumn({
   animationDelay?: number
 }) {
   return (
-    <Box sx={{ textAlign: 'center', px: 0.75 }}>
-      <Typography variant="caption" color="text.secondary" fontWeight={boldLabel ? 700 : 400} lineHeight={1}>
+    <Box sx={{ minWidth: 0, textAlign: 'center' }}>
+      <Typography
+        variant="caption"
+        color="text.secondary"
+        fontWeight={boldLabel ? 700 : 400}
+        lineHeight={1}
+        noWrap
+      >
         {label}
       </Typography>
       <Typography
@@ -111,6 +122,8 @@ function StatColumn({
           color,
           fontSize: 16,
           lineHeight: 1.1,
+          whiteSpace: 'nowrap',
+          fontVariantNumeric: 'tabular-nums',
           ...(animate && {
             animation: 'scorePop 480ms cubic-bezier(0.2, 0.8, 0.2, 1) both',
             animationDelay: `${animationDelay}ms`,

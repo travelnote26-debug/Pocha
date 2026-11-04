@@ -49,6 +49,7 @@ export interface GameSessionState {
   finishGame: (gameId: number) => void
   createRoundIfNeeded: () => void
   editLastRound: () => void
+  backToPreviousStep: () => boolean
 }
 
 function dealerNameFor(players: Player[], roundIndex: number): string {
@@ -179,10 +180,7 @@ export const useGameSession = create<GameSessionState>((set, get) => ({
   },
 
   startPredictions: () => {
-    set({
-      phase: RoundPhase.COLLECTING_PREDICTIONS,
-      playerData: get().playerData.map((pd) => ({ ...pd, prediction: null }))
-    })
+    set({ phase: RoundPhase.COLLECTING_PREDICTIONS })
     saveCurrentDraft(get())
   },
 
@@ -343,6 +341,34 @@ export const useGameSession = create<GameSessionState>((set, get) => ({
       dealerName: dealerNameFor(players, targetIndex)
     })
     saveCurrentDraft(get())
+  },
+
+  backToPreviousStep: () => {
+    const s = get()
+
+    switch (s.phase) {
+      case RoundPhase.PREDICTIONS_CONFIRMED:
+        set({ phase: RoundPhase.COLLECTING_PREDICTIONS })
+        saveCurrentDraft(get())
+        return true
+      case RoundPhase.COLLECTING_ACTUALS:
+        set({ phase: RoundPhase.PREDICTIONS_CONFIRMED })
+        saveCurrentDraft(get())
+        return true
+      case RoundPhase.COLLECTING_PREDICTIONS:
+        if (s.isEditingRound) return false
+        if (s.game) clearRoundDraft(s.game.id)
+        set({ phase: RoundPhase.SHOWING_ROUND_INFO })
+        return true
+      case RoundPhase.ROUND_SCORED:
+        get().editLastRound()
+        if (!get().isEditingRound) return false
+        set({ phase: RoundPhase.COLLECTING_ACTUALS })
+        saveCurrentDraft(get())
+        return true
+      default:
+        return false
+    }
   },
 
   finishGame: (gameId) => {

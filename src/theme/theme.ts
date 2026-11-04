@@ -5,16 +5,23 @@ const lightTheme = createTheme({
   palette: {
     mode: 'light',
     primary: { main: c.feltGreen, light: c.feltLight, dark: c.feltDark, contrastText: c.cardWhite },
-    secondary: { main: c.goldPrimary, dark: c.goldDark, contrastText: c.cardBlack },
+    secondary: { main: c.goldPrimary, dark: c.goldTextLight, contrastText: c.cardBlack },
     background: { default: c.feltSurfaceLight, paper: c.cardWhite },
-    text: { primary: c.cardBlack, secondary: '#1E3523' },
+    text: { primary: c.inkLight, secondary: c.onSurfaceVariantLight },
     divider: c.outlineLight,
     error: { main: c.errorRed, contrastText: c.cardWhite },
     success: { main: c.successGreen },
     warning: { main: c.winnerAmber },
     info: { main: c.feltGreen }
   },
-  shape: { borderRadius: 12 }
+  shape: { borderRadius: 12 },
+  components: {
+    MuiCssBaseline: {
+      styleOverrides: {
+        body: { fontVariantNumeric: 'tabular-nums' }
+      }
+    }
+  }
 })
 
 const darkTheme = createTheme({
@@ -30,7 +37,14 @@ const darkTheme = createTheme({
     warning: { main: c.winnerAmber },
     info: { main: c.feltLight }
   },
-  shape: { borderRadius: 12 }
+  shape: { borderRadius: 12 },
+  components: {
+    MuiCssBaseline: {
+      styleOverrides: {
+        body: { fontVariantNumeric: 'tabular-nums' }
+      }
+    }
+  }
 })
 
 export function getTheme(mode: 'light' | 'dark') {

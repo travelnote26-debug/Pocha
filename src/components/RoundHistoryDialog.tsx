@@ -1,5 +1,4 @@
 import EditIcon from '@mui/icons-material/Edit'
-import HistoryIcon from '@mui/icons-material/History'
 import {
   Avatar,
   Box,
@@ -9,7 +8,6 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
-  IconButton,
   Stack,
   Typography
 } from '@mui/material'
@@ -21,19 +19,7 @@ import { RoundPhase, useGameSession } from '../state/gameSession'
 import { playerColorFor } from '../theme/colors'
 import { FullscreenDialog } from './FullscreenDialog'
 
-export function RoundHistoryAction({ game }: { game: Game }) {
-  const [open, setOpen] = useState(false)
-  return (
-    <>
-      <IconButton color="inherit" aria-label="Historial de rondas" onClick={() => setOpen(true)}>
-        <HistoryIcon />
-      </IconButton>
-      <RoundHistoryDialog game={game} open={open} onClose={() => setOpen(false)} />
-    </>
-  )
-}
-
-function RoundHistoryDialog({ game, open, onClose }: { game: Game; open: boolean; onClose: () => void }) {
+export function RoundHistoryDialog({ game, open, onClose }: { game: Game; open: boolean; onClose: () => void }) {
   const rounds = useDataStore((s) => s.db.rounds)
   const scores = useDataStore((s) => s.db.scores)
   const players = useDataStore((s) => s.db.players)

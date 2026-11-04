@@ -2,7 +2,6 @@ import CheckIcon from '@mui/icons-material/Check'
 import FlagIcon from '@mui/icons-material/Flag'
 import {
   Alert,
-  Avatar,
   Box,
   Button,
   Card,
@@ -13,6 +12,7 @@ import {
   DialogTitle,
   Grow,
   LinearProgress,
+  Snackbar,
   Stack,
   Typography
 } from '@mui/material'
@@ -20,16 +20,17 @@ import { Fragment, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AppTopBar } from '../components/AppTopBar'
 import { BazasSelection } from '../components/BazasSelection'
+import { BottomActionBar } from '../components/BottomActionBar'
+import { GameActionsMenu } from '../components/GameActionsMenu'
 import { LoadingContent } from '../components/LoadingContent'
 import { PlayerScoreRow, ScorePhase } from '../components/PlayerScoreRow'
 import { RankBadge } from '../components/RankBadge'
-import { RoundHistoryAction } from '../components/RoundHistoryDialog'
-import { StandingsAction } from '../components/StandingsDialog'
 import { displayPhasesString } from '../domain/gamePhase'
-import { calculateScore } from '../domain/scoreCalculator'
 import { feltColors as c, playerColorFor } from '../theme/colors'
 import { hapticSuccess } from '../utils/haptic'
 import { RoundPhase, useGameSession, type GameSessionState } from '../state/gameSession'
+
+const primaryActionSx = { fontWeight: 700, py: 1, borderRadius: 2.5 }
 
 export function GamePage() {
   const { gameId } = useParams()
@@ -55,17 +56,20 @@ export function GamePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.phase])
 
+  const handleBack = () => {
+    if (!state.backToPreviousStep()) navigate(-1)
+  }
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>
       <AppTopBar
         title="Partida"
-        onBack={() => setShowFinishDialog(true)}
-        actions={state.game ? (
-          <>
-            <StandingsAction game={state.game} />
-            <RoundHistoryAction game={state.game} />
-          </>
-        ) : undefined}
+        onBack={handleBack}
+        actions={
+          state.game ? (
+            <GameActionsMenu game={state.game} onExit={() => setShowFinishDialog(true)} />
+          ) : undefined
+        }
       />
 
       <Box sx={{ flexGrow: 1, px: 2, py: 1.5, display: 'flex', flexDirection: 'column' }}>
@@ -286,9 +290,9 @@ function RoundInfoContent({ state, currentCards, onStart }: { state: GameSession
       </Typography>
       <Button
         variant="contained"
-        color="primary"
+        color="secondary"
         onClick={onStart}
-        sx={{ mt: 1, fontWeight: 700, py: 1, px: 3, borderRadius: 3 }}
+        sx={{ ...primaryActionSx, mt: 1, px: 3 }}
       >
         <CheckIcon sx={{ mr: 1 }} />
         Introducir predicciones
@@ -372,45 +376,33 @@ function PredictionsSummaryContent({
           )
         })}
       </Stack>
-      <Button variant="contained" color="primary" onClick={onContinue} sx={{ fontWeight: 700, py: 1, borderRadius: 2.5 }}>
-        <CheckIcon sx={{ mr: 1 }} />
-        Continuar con bazas reales
-      </Button>
+      <BottomActionBar>
+        <Button fullWidth variant="contained" color="secondary" onClick={onContinue} sx={primaryActionSx}>
+          <CheckIcon sx={{ mr: 1 }} />
+          Continuar con bazas reales
+        </Button>
+      </BottomActionBar>
     </Stack>
   )
 }
 
 function ActualsContent({ state, currentCards }: { state: GameSessionState; currentCards: number }) {
-  const [showSummary, setShowSummary] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const turnOrder = rememberTurnOrder(state)
   const assigned = state.playerData.reduce((sum, pd) => sum + (pd.actual ?? 0), 0)
   const allSet = state.playerData.every((pd) => pd.actual !== null)
   const isValid = allSet && assigned === currentCards
   const remaining = currentCards - assigned
   const excess = assigned - currentCards
-  const pochaX2 = state.game?.pochaX2 === true
 
-  const isChipEnabled = (playerIndex: number, value: number) => {
-    const others = state.playerData.filter((_, index) => index !== playerIndex)
-    const othersAssigned = others.reduce((sum, pd) => sum + (pd.actual ?? 0), 0)
-    const remainingForPlayer = currentCards - othersAssigned
-    if (others.every((pd) => pd.actual !== null)) return value === remainingForPlayer
-    return value <= remainingForPlayer
-  }
-
-  const preview = turnOrder.map((playerIndex) => {
-    const pd = state.playerData[playerIndex]
-    return {
-      pd,
-      isHit: pd.prediction === pd.actual,
-      score: calculateScore(
-        pd.prediction ?? 0,
-        pd.actual ?? 0,
-        currentCards,
-        pochaX2
-      )
-    }
-  })
+  const summaryText =
+    !allSet && assigned === currentCards
+      ? `Bazas asignadas: ${assigned} / ${currentCards} · Faltan jugadores`
+      : assigned === currentCards
+        ? `Bazas asignadas: ${assigned} / ${currentCards} · Correcto`
+        : assigned > currentCards
+          ? `Bazas asignadas: ${assigned} / ${currentCards} · Se exceden ${excess}`
+          : `Bazas asignadas: ${assigned} / ${currentCards} · Faltan ${remaining}`
 
   return (
     <>
@@ -421,97 +413,32 @@ function ActualsContent({ state, currentCards }: { state: GameSessionState; curr
         playerName={(i) => state.playerData[i]?.playerName ?? ''}
         playerColor={(i) => playerColorFor(state.playerData[i]?.playerId)}
         getValue={(i) => state.playerData[i]?.actual ?? null}
-        onValueChange={state.updateActual}
-        isChipEnabled={isChipEnabled}
+        onValueChange={(index, value) => {
+          setErrorMessage(null)
+          state.updateActual(index, value)
+        }}
+        isChipEnabled={() => true}
         maxChips={currentCards}
-        summaryText={
-          assigned > currentCards
-            ? `Bazas asignadas: ${assigned} / ${currentCards} · Se exceden ${excess}`
-            : `Bazas asignadas: ${assigned} / ${currentCards} · Quedan ${remaining}`
-        }
-        isSummaryValid={assigned <= currentCards}
-        confirmEnabled={allSet && isValid}
-        onConfirm={() => setShowSummary(true)}
+        summaryText={summaryText}
+        isSummaryValid={!allSet ? assigned <= currentCards : isValid}
+        confirmEnabled={allSet}
+        onConfirm={() => {
+          if (assigned !== currentCards) {
+            setErrorMessage(
+              `Las bazas deben sumar ${currentCards}. Ahora suman ${assigned}.`
+            )
+            return
+          }
+          state.confirmActuals()
+        }}
       />
 
-      <Dialog open={showSummary} onClose={() => setShowSummary(false)} maxWidth="xs" fullWidth>
-        <DialogTitle fontWeight="bold">Confirmar ronda</DialogTitle>
-        <DialogContent>
-          <DialogContentText sx={{ mb: 1.5 }}>
-            Revisa las bazas y los puntos antes de guardar la ronda.
-          </DialogContentText>
-          <Stack spacing={1}>
-            {preview.map(({ pd, isHit, score }) => (
-              <Stack
-                key={pd.playerId}
-                direction="row"
-                alignItems="center"
-                justifyContent="space-between"
-                sx={{ border: 1, borderColor: 'divider', borderRadius: 2, px: 1.25, py: 0.75 }}
-              >
-                <Stack direction="row" alignItems="center" spacing={1}>
-                  <Avatar
-                    sx={{
-                      width: 30,
-                      height: 30,
-                      fontSize: 13,
-                      bgcolor: playerColorFor(pd.playerId),
-                      color: '#FFFFFF',
-                      fontWeight: 700
-                    }}
-                  >
-                    {pd.playerName.charAt(0).toUpperCase()}
-                  </Avatar>
-                  <Box>
-                    <Typography variant="body2" fontWeight={700}>
-                      {pd.playerName}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Pred {pd.prediction} · Bazas {pd.actual}
-                    </Typography>
-                  </Box>
-                </Stack>
-                <Stack alignItems="flex-end">
-                  <Typography
-                    variant="subtitle1"
-                    fontWeight={900}
-                    lineHeight={1.1}
-                    sx={{
-                      color:
-                        score > 0 ? 'success.main' : score < 0 ? 'error.main' : 'text.primary'
-                    }}
-                  >
-                    {score >= 0 ? `+${score}` : score}
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    fontWeight={700}
-                    color={isHit ? 'success.main' : 'error.main'}
-                  >
-                    {isHit ? 'Acierto' : 'Fallo'}
-                  </Typography>
-                </Stack>
-              </Stack>
-            ))}
-          </Stack>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
-            Total de bazas: {assigned} / {currentCards}
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowSummary(false)}>Volver</Button>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={() => {
-              setShowSummary(false)
-              state.confirmActuals()
-            }}
-          >
-            Guardar puntos
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <Snackbar
+        open={errorMessage !== null}
+        autoHideDuration={4000}
+        onClose={() => setErrorMessage(null)}
+        message={errorMessage ?? ''}
+      />
     </>
   )
 }
@@ -596,15 +523,12 @@ function ScoredContent({
           </Grow>
         ))}
       </Stack>
-      <Button
-        variant="contained"
-        color="primary"
-        onClick={onNextRound}
-        sx={{ position: 'relative', zIndex: 2, fontWeight: 700, py: 1, borderRadius: 2.5 }}
-      >
-        <FlagIcon sx={{ mr: 1 }} />
-        {isLastRound ? 'Ver resultados finales' : 'Siguiente ronda'}
-      </Button>
+      <BottomActionBar>
+        <Button fullWidth variant="contained" color="secondary" onClick={onNextRound} sx={primaryActionSx}>
+          <FlagIcon sx={{ mr: 1 }} />
+          {isLastRound ? 'Ver resultados finales' : 'Siguiente ronda'}
+        </Button>
+      </BottomActionBar>
     </Stack>
   )
 }

@@ -21,10 +21,10 @@ async function main() {
 
     await page.getByLabel('Jugadores').click()
     log('players page')
-    await page.getByLabel('Añadir jugador').click()
+    await page.getByRole('button', { name: 'Añadir jugador' }).click()
     await page.getByLabel('Nombre').fill('Ana')
     await page.getByRole('button', { name: 'Añadir' }).click()
-    await page.getByLabel('Añadir jugador').click()
+    await page.getByRole('button', { name: 'Añadir jugador' }).click()
     await page.getByLabel('Nombre').fill('Luis')
     await page.getByRole('button', { name: 'Añadir' }).click()
     await page.getByText('Ana').first().waitFor()
@@ -57,16 +57,30 @@ async function main() {
     log('reload to verify round draft')
     await page.reload({ waitUntil: 'load' })
 
+    log('back to round info keeps predictions')
+    await page.getByLabel('Volver').click()
+    await page.getByText('Preparados para la ronda').waitFor()
+    await page.getByRole('button', { name: /Introducir predicciones/ }).click()
+
+    await page.getByRole('button', { name: 'Confirmar predicciones' }).click()
+    await page.getByRole('button', { name: /Continuar con bazas reales/ }).waitFor()
+
+    log('back from predictions summary')
+    await page.getByLabel('Volver').click()
+    await page.getByRole('button', { name: 'Confirmar predicciones' }).waitFor()
     await page.getByRole('button', { name: 'Confirmar predicciones' }).click()
     await page.getByRole('button', { name: /Continuar con bazas reales/ }).click()
     log('predictions confirmed')
 
-    // Bazas reales deben sumar 1: Luis=1, Ana=0
+    // Bazas reales deben sumar 1. Se permite elegir cualquier valor,
+    // pero el total se valida al confirmar.
     await page.getByRole('button', { name: /^1$/ }).first().click()
+    await page.getByRole('button', { name: /^1$/ }).first().click()
+    await page.getByRole('button', { name: 'Confirmar bazas' }).click()
+    await page.getByText('Las bazas deben sumar 1. Ahora suman 2.').waitFor()
+    log('invalid actuals blocked')
     await page.getByRole('button', { name: /^0$/ }).first().click()
     await page.getByRole('button', { name: 'Confirmar bazas' }).click()
-    await page.getByText('Confirmar ronda').waitFor()
-    await page.getByRole('button', { name: 'Guardar puntos' }).click()
     log('actuals confirmed')
 
     await page.getByText('Resultado de la ronda').waitFor()
@@ -75,14 +89,13 @@ async function main() {
     log('round scored ok')
 
     log('edit last round')
-    await page.getByLabel('Historial de rondas').click()
+    await page.getByLabel('Acciones de la partida').click()
+    await page.getByRole('menuitem', { name: 'Historial de rondas' }).click()
     await page.getByRole('button', { name: /Corregir ronda 1/ }).click()
     await page.getByText('Corrigiendo la última ronda').waitFor()
     await page.getByRole('button', { name: 'Confirmar predicciones' }).click()
     await page.getByRole('button', { name: /Continuar con bazas reales/ }).click()
     await page.getByRole('button', { name: 'Confirmar bazas' }).click()
-    await page.getByText('Confirmar ronda').waitFor()
-    await page.getByRole('button', { name: 'Guardar puntos' }).click()
     await page.getByText('Resultado de la ronda').waitFor()
     log('last round corrected')
 
@@ -95,7 +108,8 @@ async function main() {
     // Finish the game and check results screen
     await page.getByText('En curso').first().click()
     await page.getByText('Preparados para la ronda').waitFor()
-    await page.getByLabel('Volver').click()
+    await page.getByLabel('Acciones de la partida').click()
+    await page.getByRole('menuitem', { name: 'Salir de la partida' }).click()
     await page.getByRole('button', { name: 'Finalizar' }).click()
     await page.getByText('¡CAMPEÓN DE LA POCHA!').waitFor()
     await page.getByText('Clasificación Final').waitFor()

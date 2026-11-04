@@ -23,7 +23,7 @@ export function LoadingContent({ message = 'Cargando...' }: LoadingContentProps)
             borderRadius: '50%',
             border: '3px solid',
             borderColor: 'divider',
-            borderTopColor: 'secondary.main',
+            borderTopColor: 'secondary.dark',
             animation: 'spin 0.8s linear infinite',
             '@keyframes spin': { to: { transform: 'rotate(360deg)' } }
           }}

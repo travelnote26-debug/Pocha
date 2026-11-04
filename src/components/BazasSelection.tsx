@@ -2,6 +2,7 @@ import { Avatar, Box, Button, Card, Chip, Paper, Stack, Typography } from '@mui/
 import { memo, useCallback, useState } from 'react'
 import { feltColors as c } from '../theme/colors'
 import { hapticTick } from '../utils/haptic'
+import { BottomActionBar } from './BottomActionBar'
 
 interface BazasSelectionProps {
   headerPrefix: string
@@ -167,18 +168,21 @@ export function BazasSelection({
         ))}
       </Stack>
 
-      <Button
-        variant="contained"
-        color="secondary"
-        disabled={!confirmEnabled}
-        onClick={() => {
-          hapticTick()
-          onConfirm()
-        }}
-        sx={{ fontWeight: 700, py: 1, fontSize: 15, borderRadius: 2.5 }}
-      >
-        {confirmText}
-      </Button>
+      <BottomActionBar>
+        <Button
+          fullWidth
+          variant="contained"
+          color="secondary"
+          disabled={!confirmEnabled}
+          onClick={() => {
+            hapticTick()
+            onConfirm()
+          }}
+          sx={{ fontWeight: 700, py: 1, fontSize: 15, borderRadius: 2.5 }}
+        >
+          {confirmText}
+        </Button>
+      </BottomActionBar>
     </Stack>
   )
 }

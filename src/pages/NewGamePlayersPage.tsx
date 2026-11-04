@@ -76,7 +76,7 @@ export function NewGamePlayersPage() {
         }
       />
 
-      <Box sx={{ flexGrow: 1, px: 2, pb: 12, overflowY: 'auto' }}>
+      <Box sx={{ flexGrow: 1, px: 2, pb: 'calc(96px + env(safe-area-inset-bottom))', overflowY: 'auto' }}>
         {allPlayers.length > 0 && (
           <Box sx={{ py: 2 }}>
             <Typography variant="subtitle1" fontWeight="bold">
@@ -206,7 +206,7 @@ export function NewGamePlayersPage() {
       </Box>
 
       {selectedPlayerIds.length >= 2 && (
-        <Fab variant="extended" color="secondary" onClick={createGame} sx={{ position: 'fixed', bottom: 24, right: 24, fontWeight: 700 }}>
+        <Fab variant="extended" color="secondary" onClick={createGame} sx={{ position: 'fixed', bottom: 'calc(24px + env(safe-area-inset-bottom))', right: 24, fontWeight: 700 }}>
           <PlayArrowIcon sx={{ mr: 1 }} />
           Empezar Partida ({selectedPlayerIds.length})
         </Fab>

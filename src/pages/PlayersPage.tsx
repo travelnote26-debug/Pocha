@@ -46,9 +46,23 @@ export function PlayersPage() {
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>
       <AppTopBar title="Gestionar Jugadores" onBack={() => navigate(-1)} />
 
-      <Box sx={{ flexGrow: 1, px: 2, pb: 12 }}>
+      <Box sx={{ flexGrow: 1, px: 2, pb: 'calc(96px + env(safe-area-inset-bottom))' }}>
         {players.length === 0 ? (
-          <EmptyState title="No hay jugadores guardados" subtitle="Toca + para añadir un jugador" />
+          <EmptyState
+            title="No hay jugadores guardados"
+            subtitle="Toca + para añadir un jugador"
+            action={
+              <Button
+                variant="contained"
+                color="secondary"
+                startIcon={<AddIcon />}
+                onClick={() => setShowAddDialog(true)}
+                sx={{ fontWeight: 700, borderRadius: 2.5, px: 2.5 }}
+              >
+                Añadir jugador
+              </Button>
+            }
+          />
         ) : (
           <Stack spacing={1} sx={{ py: 2 }}>
             {players.map((player) => (
@@ -91,14 +105,16 @@ export function PlayersPage() {
         )}
       </Box>
 
-      <Fab
-        color="secondary"
-        aria-label="Añadir jugador"
-        onClick={() => setShowAddDialog(true)}
-        sx={{ position: 'fixed', bottom: 24, right: 24 }}
-      >
-        <AddIcon />
-      </Fab>
+      {players.length > 0 && (
+        <Fab
+          color="secondary"
+          aria-label="Añadir jugador"
+          onClick={() => setShowAddDialog(true)}
+          sx={{ position: 'fixed', bottom: 'calc(24px + env(safe-area-inset-bottom))', right: 24 }}
+        >
+          <AddIcon />
+        </Fab>
+      )}
 
       <Dialog open={showAddDialog} onClose={() => { setShowAddDialog(false); setNewPlayerName('') }}>
         <DialogTitle fontWeight="bold">Nuevo Jugador</DialogTitle>

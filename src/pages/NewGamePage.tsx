@@ -35,7 +35,7 @@ export function NewGamePage() {
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>
       <AppTopBar title="Nueva Partida" onBack={() => navigate(-1)} />
 
-      <Box sx={{ flexGrow: 1, px: 2, pb: 12 }}>
+      <Box sx={{ flexGrow: 1, px: 2, pb: 'calc(96px + env(safe-area-inset-bottom))' }}>
         <Box sx={{ py: 2 }}>
           <Typography variant="h6" fontWeight="bold">
             Seleccionar fases
@@ -85,7 +85,7 @@ export function NewGamePage() {
           variant="extended"
           color="secondary"
           onClick={() => navigate('/new-game/players')}
-          sx={{ position: 'fixed', bottom: 24, right: 24, fontWeight: 700 }}
+          sx={{ position: 'fixed', bottom: 'calc(24px + env(safe-area-inset-bottom))', right: 24, fontWeight: 700 }}
         >
           Siguiente
           <ArrowForwardIcon sx={{ ml: 1 }} />
