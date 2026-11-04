@@ -1,4 +1,5 @@
 import AddIcon from '@mui/icons-material/Add'
+import BackHandIcon from '@mui/icons-material/BackHand'
 import CasinoIcon from '@mui/icons-material/Casino'
 import CheckIcon from '@mui/icons-material/Check'
 import CloseIcon from '@mui/icons-material/Close'
@@ -19,6 +20,7 @@ import {
   IconButton,
   Stack,
   TextField,
+  Tooltip,
   Typography
 } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
@@ -130,7 +132,7 @@ export function NewGamePlayersPage() {
             </Typography>
           </Card>
         ) : (
-          <Stack spacing={1.5} sx={{ py: 2 }}>
+          <Stack spacing={1} sx={{ py: 1.5 }}>
             {selectedPlayers.map((player, index) => {
               const isDealer = index === 0
               return (
@@ -144,10 +146,10 @@ export function NewGamePlayersPage() {
                     borderColor: isDealer ? 'secondary.main' : 'divider',
                     boxShadow: isDealer ? 4 : 2,
                     px: 1.5,
-                    py: 1.25
+                    py: 0.5
                   }}
                 >
-                  <Stack direction="row" alignItems="center" spacing={1.5}>
+                  <Stack direction="row" alignItems="center" spacing={1}>
                     <Avatar
                       sx={{
                         width: 32,
@@ -161,25 +163,26 @@ export function NewGamePlayersPage() {
                       {index + 1}º
                     </Avatar>
 
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography variant="subtitle1" fontWeight="bold">
-                        {player.name}
-                      </Typography>
-                      {isDealer ? (
-                        <Typography variant="caption" color="secondary.main" fontWeight="bold">
-                          🎴 Reparte primero (Mano)
+                    <Tooltip title={isDealer ? 'Mano · Reparte primero' : 'Asignar reparto'} arrow>
+                      <Box
+                        onClick={() => setDealer(player.id)}
+                        sx={{
+                          flex: 1,
+                          minWidth: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 0.5,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Typography variant="subtitle1" fontWeight="bold" noWrap>
+                          {player.name}
                         </Typography>
-                      ) : (
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          onClick={() => setDealer(player.id)}
-                          sx={{ cursor: 'pointer' }}
-                        >
-                          Toca para asignar reparto
-                        </Typography>
-                      )}
-                    </Box>
+                        {isDealer && (
+                          <BackHandIcon sx={{ fontSize: 18, color: 'secondary.main', flexShrink: 0 }} />
+                        )}
+                      </Box>
+                    </Tooltip>
 
                     <Stack direction="row" alignItems="center">
                       <IconButton size="small" disabled={index === 0} onClick={() => movePlayer(index, index - 1)} aria-label="Subir">

@@ -1,5 +1,5 @@
+import BackHandIcon from '@mui/icons-material/BackHand'
 import CasinoIcon from '@mui/icons-material/Casino'
-import StarIcon from '@mui/icons-material/Star'
 import { Avatar, Box, Tooltip, Typography } from '@mui/material'
 import type { Player } from '../domain/models'
 import { feltColors as c, playerColorFor } from '../theme/colors'
@@ -16,10 +16,11 @@ export function TablePreview({ players }: TablePreviewProps) {
       sx={{
         position: 'relative',
         width: '100%',
-        maxWidth: 288,
+        maxWidth: 220,
         aspectRatio: '1',
         mx: 'auto',
-        my: 1
+        mt: 1.5,
+        mb: 0.5
       }}
     >
       <Box
@@ -43,7 +44,7 @@ export function TablePreview({ players }: TablePreviewProps) {
           gap: 0.25
         }}
       >
-        <CasinoIcon sx={{ color: 'secondary.main', fontSize: 34, opacity: 0.9 }} />
+        <CasinoIcon sx={{ color: 'secondary.main', fontSize: 28, opacity: 0.9 }} />
         <Typography
           variant="caption"
           sx={{ color: 'rgba(255,255,255,0.75)', fontWeight: 700, letterSpacing: 1 }}
@@ -114,7 +115,7 @@ export function TablePreview({ players }: TablePreviewProps) {
                   {index + 1}
                 </Box>
                 {isDealer && (
-                  <StarIcon
+                  <BackHandIcon
                     sx={{
                       position: 'absolute',
                       top: -8,
