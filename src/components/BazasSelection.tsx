@@ -41,7 +41,7 @@ export function BazasSelection({
   const clampedPosition = Math.min(focusedPosition, turnOrder.length - 1)
   const focusedPlayerIndex = turnOrder[clampedPosition]
   const focusedValue = getValue(focusedPlayerIndex)
-  const chipMin = maxChips > 12 ? 40 : 48
+  const chipMin = maxChips > 12 ? 46 : 56
 
   const selectValue = (value: number) => {
     hapticTick()
@@ -116,7 +116,7 @@ export function BazasSelection({
                     aspectRatio: '1',
                     borderRadius: '50%',
                     fontWeight: 700,
-                    fontSize: selected ? 21 : 19,
+                    fontSize: selected ? 23 : 21,
                     '.MuiChip-label': { padding: 0 },
                     ...(invalidSelected && {
                       bgcolor: c.errorRed,
