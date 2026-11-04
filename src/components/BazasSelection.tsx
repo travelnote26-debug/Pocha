@@ -41,7 +41,7 @@ export function BazasSelection({
   const clampedPosition = Math.min(focusedPosition, turnOrder.length - 1)
   const focusedPlayerIndex = turnOrder[clampedPosition]
   const focusedValue = getValue(focusedPlayerIndex)
-  const chipSize = maxChips > 12 ? 46 : 56
+  const chipMin = maxChips > 12 ? 40 : 48
 
   const selectValue = (value: number) => {
     hapticTick()
@@ -94,7 +94,10 @@ export function BazasSelection({
             </Box>
           </Stack>
 
-          <Box key={focusedPlayerIndex} sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+          <Box
+            key={focusedPlayerIndex}
+            sx={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${chipMin}px, 1fr))`, gap: 1 }}
+          >
             {Array.from({ length: maxChips + 1 }, (_, value) => {
               const enabled = isChipEnabled(focusedPlayerIndex, value)
               const selected = focusedValue === value
@@ -108,8 +111,9 @@ export function BazasSelection({
                   variant={selected ? 'filled' : 'outlined'}
                   color={selected ? 'secondary' : undefined}
                   sx={{
-                    width: chipSize,
-                    height: chipSize,
+                    width: '100%',
+                    height: 'auto',
+                    aspectRatio: '1',
                     borderRadius: '50%',
                     fontWeight: 700,
                     fontSize: selected ? 21 : 19,
