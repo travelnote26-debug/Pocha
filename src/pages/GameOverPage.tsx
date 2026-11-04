@@ -1,12 +1,17 @@
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
+import ReplayIcon from '@mui/icons-material/Replay'
+import ShareIcon from '@mui/icons-material/Share'
 import StarIcon from '@mui/icons-material/Star'
 import {
+  Avatar,
   Box,
+  Button,
   Card,
   Collapse,
   Divider,
   IconButton,
+  Snackbar,
   Stack,
   Typography,
   useTheme
@@ -16,6 +21,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { AppTopBar } from '../components/AppTopBar'
 import { LoadingContent } from '../components/LoadingContent'
 import { RankBadge } from '../components/RankBadge'
+import { displayPhasesString } from '../domain/gamePhase'
 import { getPlayerIdList } from '../domain/models'
 import { useDataStore } from '../state/dataStore'
 import { feltColors as c, playerColorFor } from '../theme/colors'
@@ -45,7 +51,9 @@ export function GameOverPage() {
   const navigate = useNavigate()
   const id = Number(gameId)
   const db = useDataStore((s) => s.db)
+  const createGame = useDataStore((s) => s.createGame)
   const theme = useTheme()
+  const [shareMessage, setShareMessage] = useState<string | null>(null)
 
   const results = useMemo(() => {
     const game = db.games.find((g) => g.id === id)
@@ -108,7 +116,51 @@ export function GameOverPage() {
     )
   }
 
-  const winner = results.playerScores[0]
+  const game = db.games.find((entry) => entry.id === id) ?? null
+  const isTie =
+    results.playerScores.length > 1 &&
+    results.playerScores[0].totalScore === results.playerScores[1].totalScore
+
+  const buildShareText = (): string => {
+    const lines = ['Clasificación final · Pocha']
+    if (game) {
+      lines.push(`${displayPhasesString(game.phases)} · ${game.numPlayers} jugadores`)
+    }
+    lines.push('')
+    results.playerScores.forEach((player, rank) => {
+      lines.push(`${rank + 1}. ${player.playerName}: ${player.totalScore} pts`)
+    })
+    return lines.join('\n')
+  }
+
+  const handleShare = async () => {
+    const text = buildShareText()
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ title: 'Resultados de la Pocha', text })
+        return
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') return
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(text)
+      setShareMessage('Resultado copiado al portapapeles')
+    } catch {
+      setShareMessage('No se pudo compartir el resultado')
+    }
+  }
+
+  const handleRematch = () => {
+    if (!game) return
+    const newGameId = createGame(
+      game.phases,
+      game.pochaX2,
+      game.numPlayers,
+      game.playerIds
+    )
+    navigate(`/game/${newGameId}`)
+  }
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>
@@ -116,29 +168,31 @@ export function GameOverPage() {
 
       <Box sx={{ flexGrow: 1, px: 2, py: 2 }}>
         <Stack spacing={1.5}>
-          {winner && (
-            <Card
-              sx={{
-                borderRadius: 3,
-                bgcolor: c.winnerAmber,
-                boxShadow: 8,
-                px: 3,
-                py: 3,
-                textAlign: 'center'
-              }}
+          <Podium players={results.playerScores} isTie={isTie} />
+
+          <Stack direction="row" spacing={1}>
+            <Button
+              fullWidth
+              variant="outlined"
+              color="secondary"
+              startIcon={<ShareIcon />}
+              onClick={handleShare}
+              sx={{ fontWeight: 700 }}
             >
-              <StarIcon sx={{ fontSize: 52, color: 'black' }} />
-              <Typography variant="overline" fontWeight="bold" color="rgba(0,0,0,0.7)" sx={{ letterSpacing: 1, display: 'block' }}>
-                ¡CAMPEÓN DE LA POCHA!
-              </Typography>
-              <Typography variant="h4" fontWeight={900} color="black">
-                {winner.playerName}
-              </Typography>
-              <Typography variant="h6" fontWeight="bold" color="rgba(0,0,0,0.85)">
-                {winner.totalScore} puntos
-              </Typography>
-            </Card>
-          )}
+              Compartir
+            </Button>
+            <Button
+              fullWidth
+              variant="contained"
+              color="secondary"
+              startIcon={<ReplayIcon />}
+              onClick={handleRematch}
+              disabled={!game}
+              sx={{ fontWeight: 700 }}
+            >
+              Revancha
+            </Button>
+          </Stack>
 
           <Typography variant="h6" fontWeight="bold">
             Clasificación Final
@@ -182,7 +236,115 @@ export function GameOverPage() {
           )}
         </Stack>
       </Box>
+
+      <Snackbar
+        open={shareMessage !== null}
+        autoHideDuration={3000}
+        onClose={() => setShareMessage(null)}
+        message={shareMessage ?? ''}
+      />
     </Box>
+  )
+}
+
+const PODIUM_ORDER = [1, 0, 2]
+const PODIUM_HEIGHTS = [104, 82, 66]
+
+function Podium({ players, isTie }: { players: PlayerFinalScore[]; isTie: boolean }) {
+  const slots =
+    players.length === 1 ? [0] : players.length === 2 ? [1, 0] : PODIUM_ORDER
+
+  return (
+    <Card
+      sx={{
+        borderRadius: 3,
+        bgcolor: 'primary.main',
+        color: 'primary.contrastText',
+        border: '1px solid',
+        borderColor: 'secondary.main',
+        boxShadow: 8,
+        px: 2,
+        pt: 2,
+        pb: 0,
+        textAlign: 'center',
+        overflow: 'hidden'
+      }}
+    >
+      <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.5}>
+        <StarIcon sx={{ fontSize: 18, color: 'secondary.main' }} />
+        <Typography
+          variant="overline"
+          fontWeight="bold"
+          color="secondary.main"
+          sx={{ letterSpacing: 1, lineHeight: 1.2 }}
+        >
+          {isTie ? 'EMPATE EN LA POCHA' : '¡CAMPEÓN DE LA POCHA!'}
+        </Typography>
+      </Stack>
+
+      <Stack direction="row" alignItems="flex-end" justifyContent="center" spacing={1} sx={{ mt: 1 }}>
+        {slots
+          .filter((rank) => rank < players.length)
+          .map((rank) => {
+            const player = players[rank]
+            const isWinner = rank === 0
+            return (
+              <Stack
+                key={player.playerId}
+                alignItems="center"
+                spacing={0.5}
+                sx={{ flex: 1, maxWidth: 110, minWidth: 0 }}
+              >
+                <Avatar
+                  sx={{
+                    width: isWinner ? 52 : 42,
+                    height: isWinner ? 52 : 42,
+                    bgcolor: playerColorFor(player.playerId),
+                    color: '#FFFFFF',
+                    fontWeight: 900,
+                    fontSize: isWinner ? 20 : 16,
+                    border: '2px solid',
+                    borderColor: isWinner ? 'secondary.main' : 'rgba(255,255,255,0.5)',
+                    boxShadow: isWinner ? 4 : 1
+                  }}
+                >
+                  {player.playerName.charAt(0).toUpperCase()}
+                </Avatar>
+                <Typography variant="body2" fontWeight={700} noWrap sx={{ maxWidth: '100%' }}>
+                  {player.playerName}
+                </Typography>
+                <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                  {player.totalScore} pts
+                </Typography>
+                <Box
+                  sx={{
+                    width: '100%',
+                    height: PODIUM_HEIGHTS[rank],
+                    mt: 0.5,
+                    borderRadius: '10px 10px 0 0',
+                    bgcolor: isWinner ? 'secondary.main' : 'rgba(255,255,255,0.16)',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    justifyContent: 'center',
+                    pt: 0.5
+                  }}
+                >
+                  <Typography
+                    variant="h6"
+                    fontWeight={900}
+                    sx={{
+                      color: isWinner ? 'secondary.contrastText' : 'primary.contrastText',
+                      opacity: isWinner ? 1 : 0.8
+                    }}
+                  >
+                    {rank + 1}
+                  </Typography>
+                </Box>
+              </Stack>
+            )
+          })}
+      </Stack>
+    </Card>
   )
 }
 

@@ -24,6 +24,7 @@ import {
 import { useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { AppTopBar } from '../components/AppTopBar'
+import { TablePreview } from '../components/TablePreview'
 import { useDataStore } from '../state/dataStore'
 import { useNewGame } from '../state/newGame'
 import { playerColorFor } from '../theme/colors'
@@ -119,6 +120,8 @@ export function NewGamePlayersPage() {
             </Button>
           )}
         </Stack>
+
+        {selectedPlayers.length > 0 && <TablePreview players={selectedPlayers} />}
 
         {selectedPlayers.length === 0 ? (
           <Card variant="outlined" sx={{ mt: 2, borderRadius: 2, bgcolor: 'action.hover', px: 3, py: 3, textAlign: 'center' }}>

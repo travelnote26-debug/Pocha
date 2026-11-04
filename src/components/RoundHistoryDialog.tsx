@@ -1,7 +1,14 @@
+import EditIcon from '@mui/icons-material/Edit'
 import HistoryIcon from '@mui/icons-material/History'
 import {
   Avatar,
   Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   IconButton,
   Stack,
   Typography
@@ -10,6 +17,7 @@ import { useMemo, useState } from 'react'
 import type { Game, RoundPlayerScore } from '../domain/models'
 import { getPlayerIdList } from '../domain/models'
 import { useDataStore } from '../state/dataStore'
+import { RoundPhase, useGameSession } from '../state/gameSession'
 import { playerColorFor } from '../theme/colors'
 import { FullscreenDialog } from './FullscreenDialog'
 
@@ -29,6 +37,18 @@ function RoundHistoryDialog({ game, open, onClose }: { game: Game; open: boolean
   const rounds = useDataStore((s) => s.db.rounds)
   const scores = useDataStore((s) => s.db.scores)
   const players = useDataStore((s) => s.db.players)
+  const editLastRound = useGameSession((s) => s.editLastRound)
+  const isEditingRound = useGameSession((s) => s.isEditingRound)
+  const phase = useGameSession((s) => s.phase)
+  const playerData = useGameSession((s) => s.playerData)
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false)
+
+  const isRoundInProgress =
+    phase === RoundPhase.COLLECTING_PREDICTIONS ||
+    phase === RoundPhase.PREDICTIONS_CONFIRMED ||
+    phase === RoundPhase.COLLECTING_ACTUALS
+  const hasPendingInput =
+    isRoundInProgress && playerData.some((pd) => pd.prediction !== null || pd.actual !== null)
 
   const gameRounds = useMemo(
     () =>
@@ -53,11 +73,37 @@ function RoundHistoryDialog({ game, open, onClose }: { game: Game; open: boolean
     return (id: number) => map.get(id) ?? '?'
   }, [players])
 
+  const lastScoredRound = useMemo(() => {
+    for (let i = gameRounds.length - 1; i >= 0; i--) {
+      if ((scoresByRound.get(gameRounds[i].id)?.length ?? 0) > 0) return gameRounds[i]
+    }
+    return null
+  }, [gameRounds, scoresByRound])
+
   const seatOrder = getPlayerIdList(game)
   const playersCount = seatOrder.length
 
   return (
     <FullscreenDialog title="Historial de rondas" open={open} onClose={onClose}>
+      {lastScoredRound && !isEditingRound && (
+        <Button
+          fullWidth
+          variant="outlined"
+          color="secondary"
+          startIcon={<EditIcon />}
+          onClick={() => {
+            if (hasPendingInput) {
+              setShowDiscardConfirm(true)
+              return
+            }
+            editLastRound()
+            onClose()
+          }}
+          sx={{ mt: 1.5, fontWeight: 700 }}
+        >
+          Corregir ronda {lastScoredRound.roundNumber}
+        </Button>
+      )}
       {gameRounds.length === 0 ? (
           <Typography variant="body2" color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
             Aún no hay rondas completadas.
@@ -136,6 +182,30 @@ function RoundHistoryDialog({ game, open, onClose }: { game: Game; open: boolean
             })}
           </Stack>
         )}
+
+      <Dialog open={showDiscardConfirm} onClose={() => setShowDiscardConfirm(false)}>
+        <DialogTitle fontWeight="bold">Descartar ronda en curso</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Para corregir la ronda anterior se perderán las predicciones o bazas de la ronda
+            actual. ¿Quieres continuar?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowDiscardConfirm(false)}>Volver</Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={() => {
+              setShowDiscardConfirm(false)
+              editLastRound()
+              onClose()
+            }}
+          >
+            Descartar y corregir
+          </Button>
+        </DialogActions>
+      </Dialog>
     </FullscreenDialog>
   )
 }

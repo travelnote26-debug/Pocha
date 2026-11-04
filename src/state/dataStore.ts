@@ -17,6 +17,7 @@ interface DataState {
   getGame: (id: number) => Game | undefined
   finishGame: (id: number) => void
   createRound: (gameId: number, roundNumber: number, numCards: number) => number
+  deleteRound: (roundId: number) => void
   saveScores: (roundId: number, rows: PlayerRoundScoreInput[]) => number
   getRoundsByGameIdOnce: (gameId: number) => Round[]
   getScoresByRoundIdOnce: (roundId: number) => RoundPlayerScore[]
@@ -94,8 +95,16 @@ export const useDataStore = create<DataState>((set, get) => ({
     return id
   },
 
+  deleteRound: (roundId) => {
+    const db = { ...get().db }
+    db.scores = db.scores.filter((score) => score.roundId !== roundId)
+    db.rounds = db.rounds.filter((round) => round.id !== roundId)
+    commit(set, db)
+  },
+
   saveScores: (roundId, rows) => {
     const db = { ...get().db }
+    db.scores = db.scores.filter((score) => score.roundId !== roundId)
     let id = nextId(db.scores)
     const saved = rows.map((row) => ({ id: id++, roundId, ...row }))
     db.scores = [...db.scores, ...saved]

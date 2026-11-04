@@ -1,25 +1,40 @@
 import CssBaseline from '@mui/material/CssBaseline'
 import { ThemeProvider } from '@mui/material/styles'
-import React from 'react'
+import React, { useEffect } from 'react'
 import ReactDOM from 'react-dom/client'
 import { HashRouter } from 'react-router-dom'
 import { App } from './App'
 import { useDataStore } from './state/dataStore'
+import { useThemeMode } from './state/themeMode'
 import { getTheme } from './theme/theme'
 import { setupServiceWorker } from './utils/swUpdate'
 
 setupServiceWorker()
 useDataStore.getState().load()
 
-const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+function Root() {
+  const mode = useThemeMode((s) => s.mode)
+  const theme = getTheme(mode)
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <ThemeProvider theme={getTheme(prefersDark ? 'dark' : 'light')}>
+  useEffect(() => {
+    document.documentElement.style.colorScheme = mode
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute('content', theme.palette.primary.main)
+  }, [mode, theme])
+
+  return (
+    <ThemeProvider theme={theme}>
       <CssBaseline />
       <HashRouter>
         <App />
       </HashRouter>
     </ThemeProvider>
+  )
+}
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <Root />
   </React.StrictMode>
 )

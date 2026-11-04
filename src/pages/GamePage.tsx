@@ -1,6 +1,8 @@
 import CheckIcon from '@mui/icons-material/Check'
 import FlagIcon from '@mui/icons-material/Flag'
 import {
+  Alert,
+  Avatar,
   Box,
   Button,
   Card,
@@ -9,6 +11,7 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
+  Grow,
   LinearProgress,
   Stack,
   Typography
@@ -23,7 +26,8 @@ import { RankBadge } from '../components/RankBadge'
 import { RoundHistoryAction } from '../components/RoundHistoryDialog'
 import { StandingsAction } from '../components/StandingsDialog'
 import { displayPhasesString } from '../domain/gamePhase'
-import { playerColorFor } from '../theme/colors'
+import { calculateScore } from '../domain/scoreCalculator'
+import { feltColors as c, playerColorFor } from '../theme/colors'
 import { hapticSuccess } from '../utils/haptic'
 import { RoundPhase, useGameSession, type GameSessionState } from '../state/gameSession'
 
@@ -40,11 +44,11 @@ export function GamePage() {
   }, [id])
 
   useEffect(() => {
-    if (state.isFinished && state.game) {
+    if (state.isFinished && state.game && state.game.id === id) {
       navigate(`/game-over/${state.game.id}`, { replace: true })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.isFinished, state.game])
+  }, [state.isFinished, state.game, id])
 
   useEffect(() => {
     if (state.phase === RoundPhase.ROUND_SCORED) hapticSuccess()
@@ -79,7 +83,21 @@ export function GamePage() {
             Si guardas y sales, podrás retomar la partida desde el listado principal.
           </DialogContentText>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ flexWrap: 'wrap', gap: 1 }}>
+          <Button
+            onClick={() => setShowFinishDialog(false)}
+            sx={{ fontWeight: 700 }}
+          >
+            Seguir jugando
+          </Button>
+          <Button
+            onClick={() => {
+              setShowFinishDialog(false)
+              navigate(-1)
+            }}
+          >
+            Guardar y salir
+          </Button>
           <Button
             variant="contained"
             onClick={() => {
@@ -89,14 +107,6 @@ export function GamePage() {
             sx={{ bgcolor: 'error.main', '&:hover': { bgcolor: 'error.dark' } }}
           >
             Finalizar
-          </Button>
-          <Button
-            onClick={() => {
-              setShowFinishDialog(false)
-              navigate(-1)
-            }}
-          >
-            Guardar y salir
           </Button>
         </DialogActions>
       </Dialog>
@@ -112,6 +122,12 @@ function GameContent({ state }: { state: GameSessionState }) {
 
   return (
     <Stack spacing={1} sx={{ flexGrow: 1, minHeight: 0 }}>
+      {state.isEditingRound && (
+        <Alert severity="warning" sx={{ py: 0, borderRadius: 2, '& .MuiAlert-message': { py: 0.5 } }}>
+          Corrigiendo la última ronda. Los puntos se recalcularán al guardar.
+        </Alert>
+      )}
+
       <RoundInfoHeader
         phasesDisplay={phasesDisplayText}
         pochaX2={pochaX2}
@@ -138,6 +154,7 @@ function GameContent({ state }: { state: GameSessionState }) {
         {state.phase === RoundPhase.ROUND_SCORED && (
           <ScoredContent
             state={state}
+            currentCards={currentCards}
             isLastRound={state.currentRoundIndex + 1 >= totalRounds}
             onNextRound={state.nextRound}
           />
@@ -364,74 +381,276 @@ function PredictionsSummaryContent({
 }
 
 function ActualsContent({ state, currentCards }: { state: GameSessionState; currentCards: number }) {
+  const [showSummary, setShowSummary] = useState(false)
   const turnOrder = rememberTurnOrder(state)
   const assigned = state.playerData.reduce((sum, pd) => sum + (pd.actual ?? 0), 0)
   const allSet = state.playerData.every((pd) => pd.actual !== null)
   const isValid = allSet && assigned === currentCards
   const remaining = currentCards - assigned
   const excess = assigned - currentCards
+  const pochaX2 = state.game?.pochaX2 === true
+
+  const isChipEnabled = (playerIndex: number, value: number) => {
+    const others = state.playerData.filter((_, index) => index !== playerIndex)
+    const othersAssigned = others.reduce((sum, pd) => sum + (pd.actual ?? 0), 0)
+    const remainingForPlayer = currentCards - othersAssigned
+    if (others.every((pd) => pd.actual !== null)) return value === remainingForPlayer
+    return value <= remainingForPlayer
+  }
+
+  const preview = turnOrder.map((playerIndex) => {
+    const pd = state.playerData[playerIndex]
+    return {
+      pd,
+      isHit: pd.prediction === pd.actual,
+      score: calculateScore(
+        pd.prediction ?? 0,
+        pd.actual ?? 0,
+        currentCards,
+        pochaX2
+      )
+    }
+  })
 
   return (
-    <BazasSelection
-      headerPrefix="Bazas de"
-      confirmText="Confirmar bazas"
-      turnOrder={turnOrder}
-      playerName={(i) => state.playerData[i]?.playerName ?? ''}
-      playerColor={(i) => playerColorFor(state.playerData[i]?.playerId)}
-      getValue={(i) => state.playerData[i]?.actual ?? null}
-      onValueChange={state.updateActual}
-      isChipEnabled={() => true}
-      maxChips={currentCards}
-      summaryText={
-        assigned > currentCards
-          ? `Bazas asignadas: ${assigned} / ${currentCards} · Se exceden ${excess}`
-          : `Bazas asignadas: ${assigned} / ${currentCards} · Quedan ${remaining}`
-      }
-      isSummaryValid={assigned <= currentCards}
-      confirmEnabled={allSet && isValid}
-      onConfirm={state.confirmActuals}
-    />
+    <>
+      <BazasSelection
+        headerPrefix="Bazas de"
+        confirmText="Confirmar bazas"
+        turnOrder={turnOrder}
+        playerName={(i) => state.playerData[i]?.playerName ?? ''}
+        playerColor={(i) => playerColorFor(state.playerData[i]?.playerId)}
+        getValue={(i) => state.playerData[i]?.actual ?? null}
+        onValueChange={state.updateActual}
+        isChipEnabled={isChipEnabled}
+        maxChips={currentCards}
+        summaryText={
+          assigned > currentCards
+            ? `Bazas asignadas: ${assigned} / ${currentCards} · Se exceden ${excess}`
+            : `Bazas asignadas: ${assigned} / ${currentCards} · Quedan ${remaining}`
+        }
+        isSummaryValid={assigned <= currentCards}
+        confirmEnabled={allSet && isValid}
+        onConfirm={() => setShowSummary(true)}
+      />
+
+      <Dialog open={showSummary} onClose={() => setShowSummary(false)} maxWidth="xs" fullWidth>
+        <DialogTitle fontWeight="bold">Confirmar ronda</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 1.5 }}>
+            Revisa las bazas y los puntos antes de guardar la ronda.
+          </DialogContentText>
+          <Stack spacing={1}>
+            {preview.map(({ pd, isHit, score }) => (
+              <Stack
+                key={pd.playerId}
+                direction="row"
+                alignItems="center"
+                justifyContent="space-between"
+                sx={{ border: 1, borderColor: 'divider', borderRadius: 2, px: 1.25, py: 0.75 }}
+              >
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <Avatar
+                    sx={{
+                      width: 30,
+                      height: 30,
+                      fontSize: 13,
+                      bgcolor: playerColorFor(pd.playerId),
+                      color: '#FFFFFF',
+                      fontWeight: 700
+                    }}
+                  >
+                    {pd.playerName.charAt(0).toUpperCase()}
+                  </Avatar>
+                  <Box>
+                    <Typography variant="body2" fontWeight={700}>
+                      {pd.playerName}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Pred {pd.prediction} · Bazas {pd.actual}
+                    </Typography>
+                  </Box>
+                </Stack>
+                <Stack alignItems="flex-end">
+                  <Typography
+                    variant="subtitle1"
+                    fontWeight={900}
+                    lineHeight={1.1}
+                    sx={{
+                      color:
+                        score > 0 ? 'success.main' : score < 0 ? 'error.main' : 'text.primary'
+                    }}
+                  >
+                    {score >= 0 ? `+${score}` : score}
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    fontWeight={700}
+                    color={isHit ? 'success.main' : 'error.main'}
+                  >
+                    {isHit ? 'Acierto' : 'Fallo'}
+                  </Typography>
+                </Stack>
+              </Stack>
+            ))}
+          </Stack>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
+            Total de bazas: {assigned} / {currentCards}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowSummary(false)}>Volver</Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => {
+              setShowSummary(false)
+              state.confirmActuals()
+            }}
+          >
+            Guardar puntos
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   )
 }
 
 function ScoredContent({
   state,
+  currentCards,
   isLastRound,
   onNextRound
 }: {
   state: GameSessionState
+  currentCards: number
   isLastRound: boolean
   onNextRound: () => void
 }) {
   const sorted = [...state.playerData].sort((a, b) => b.totalScore - a.totalScore)
+  const pochaPlayers = state.playerData.filter(
+    (pd) =>
+      currentCards > 1 &&
+      pd.prediction !== null &&
+      pd.prediction === pd.actual &&
+      pd.actual === currentCards
+  )
 
   return (
-    <Stack sx={{ flexGrow: 1, minHeight: 0 }}>
-      <Typography variant="body2" fontWeight="bold" color="text.secondary">
+    <Stack sx={{ flexGrow: 1, minHeight: 0, position: 'relative' }}>
+      {pochaPlayers.length > 0 && <PochaConfetti />}
+
+      {pochaPlayers.length > 0 && (
+        <Card
+          sx={{
+            position: 'relative',
+            zIndex: 2,
+            bgcolor: 'secondary.main',
+            color: 'secondary.contrastText',
+            borderRadius: 2.5,
+            textAlign: 'center',
+            px: 2,
+            py: 0.75,
+            boxShadow: 6,
+            animation: 'pochaGlow 700ms ease-out both',
+            '@keyframes pochaGlow': {
+              '0%': { transform: 'scale(0.85)', opacity: 0 },
+              '65%': { transform: 'scale(1.04)', opacity: 1 },
+              '100%': { transform: 'scale(1)' }
+            }
+          }}
+        >
+          <Typography variant="subtitle1" fontWeight={900} lineHeight={1.2}>
+            ¡POCHA! {pochaPlayers.map((pd) => pd.playerName).join(', ')}
+          </Typography>
+        </Card>
+      )}
+
+      <Typography
+        variant="body2"
+        fontWeight="bold"
+        color="text.secondary"
+        sx={{ position: 'relative', zIndex: 2 }}
+      >
         Resultado de la ronda
       </Typography>
-      <Stack spacing={0.75} sx={{ flexGrow: 1, overflowY: 'auto', py: 0.75 }}>
+      <Stack spacing={0.75} sx={{ flexGrow: 1, overflowY: 'auto', py: 0.75, position: 'relative', zIndex: 2 }}>
         {sorted.map((pd, rank) => (
-          <Stack key={pd.playerId} direction="row" alignItems="center" spacing={1}>
-            <RankBadge rank={rank} />
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <PlayerScoreRow
-                playerName={pd.playerName}
-                playerColor={playerColorFor(pd.playerId)}
-                prediction={pd.prediction}
-                actual={pd.actual}
-                roundScore={pd.roundScore}
-                totalScore={pd.totalScore}
-                phase={ScorePhase.SCORED}
-              />
-            </Box>
-          </Stack>
+          <Grow key={pd.playerId} in timeout={360} style={{ transitionDelay: `${rank * 70}ms` }}>
+            <Stack direction="row" alignItems="center" spacing={1}>
+              <RankBadge rank={rank} />
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <PlayerScoreRow
+                  playerName={pd.playerName}
+                  playerColor={playerColorFor(pd.playerId)}
+                  prediction={pd.prediction}
+                  actual={pd.actual}
+                  roundScore={pd.roundScore}
+                  totalScore={pd.totalScore}
+                  phase={ScorePhase.SCORED}
+                  animateScore
+                  animationDelay={rank * 70 + 120}
+                />
+              </Box>
+            </Stack>
+          </Grow>
         ))}
       </Stack>
-      <Button variant="contained" color="primary" onClick={onNextRound} sx={{ fontWeight: 700, py: 1, borderRadius: 2.5 }}>
+      <Button
+        variant="contained"
+        color="primary"
+        onClick={onNextRound}
+        sx={{ position: 'relative', zIndex: 2, fontWeight: 700, py: 1, borderRadius: 2.5 }}
+      >
         <FlagIcon sx={{ mr: 1 }} />
         {isLastRound ? 'Ver resultados finales' : 'Siguiente ronda'}
       </Button>
     </Stack>
+  )
+}
+
+const CONFETTI_COLORS = [c.goldPrimary, c.cardRed, c.successGreen, '#1565C0', '#6A1B9A', c.cardWhite]
+
+function PochaConfetti() {
+  return (
+    <Box
+      aria-hidden
+      sx={{
+        position: 'absolute',
+        inset: 0,
+        overflow: 'hidden',
+        pointerEvents: 'none',
+        zIndex: 1,
+        '@keyframes confettiFall': {
+          '0%': { transform: 'translate3d(0, -20px, 0) rotate(0deg)', opacity: 1 },
+          '100%': { transform: 'translate3d(var(--drift), 420px, 0) rotate(var(--spin))', opacity: 0 }
+        }
+      }}
+    >
+      {Array.from({ length: 20 }, (_, i) => {
+        const left = (i * 37 + 11) % 100
+        const delay = (i % 7) * 0.06
+        const duration = 1.1 + (i % 5) * 0.16
+        const drift = (i % 2 === 0 ? 1 : -1) * (16 + (i % 4) * 14)
+        const spin = 360 + ((i * 53) % 540)
+        return (
+          <Box
+            key={i}
+            sx={{
+              position: 'absolute',
+              top: -16,
+              left: `${left}%`,
+              width: i % 3 === 0 ? 8 : 6,
+              height: i % 3 === 0 ? 8 : 12,
+              borderRadius: i % 3 === 0 ? '50%' : '1px',
+              bgcolor: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+              '--drift': `${drift}px`,
+              '--spin': `${spin}deg`,
+              animation: `confettiFall ${duration}s ease-in ${delay}s both`
+            }}
+          />
+        )
+      })}
+    </Box>
   )
 }

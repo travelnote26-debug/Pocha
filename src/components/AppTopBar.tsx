@@ -1,6 +1,7 @@
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { AppBar, IconButton, Toolbar, Typography } from '@mui/material'
 import type { ReactNode } from 'react'
+import { ThemeToggleButton } from './ThemeToggleButton'
 
 interface AppTopBarProps {
   title: string
@@ -27,6 +28,7 @@ export function AppTopBar({ title, onBack, actions }: AppTopBarProps) {
           {title}
         </Typography>
         {actions}
+        <ThemeToggleButton />
       </Toolbar>
     </AppBar>
   )

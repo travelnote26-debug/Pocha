@@ -19,20 +19,91 @@ import {
   Typography,
   useTheme
 } from '@mui/material'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AppTopBar } from '../components/AppTopBar'
 import { EmptyState } from '../components/EmptyState'
 import type { Game } from '../domain/models'
-import { displayPhasesString } from '../domain/gamePhase'
+import { displayPhasesString, parsePhases } from '../domain/gamePhase'
+import { generateRounds } from '../domain/roundGenerator'
 import { useDataStore } from '../state/dataStore'
 import { feltColors as c } from '../theme/colors'
+
+interface GameSummary {
+  totalRounds: number
+  playedRounds: number
+  leaderName: string | null
+  leaderScore: number | null
+}
+
+function formatGameDate(timestamp: number): string {
+  const date = new Date(timestamp)
+  if (Number.isNaN(date.getTime())) return ''
+  const sameYear = date.getFullYear() === new Date().getFullYear()
+  return new Intl.DateTimeFormat('es-ES', {
+    day: 'numeric',
+    month: 'short',
+    ...(sameYear ? {} : { year: 'numeric' })
+  }).format(date)
+}
 
 export function HomePage() {
   const navigate = useNavigate()
   const games = useDataStore((s) => s.db.games)
+  const rounds = useDataStore((s) => s.db.rounds)
+  const scores = useDataStore((s) => s.db.scores)
+  const players = useDataStore((s) => s.db.players)
   const deleteGame = useDataStore((s) => s.deleteGame)
   const [gameToDelete, setGameToDelete] = useState<Game | null>(null)
+
+  const summaries = useMemo(() => {
+    const roundById = new Map(rounds.map((round) => [round.id, round]))
+    const nameById = new Map(players.map((player) => [player.id, player.name]))
+    const totalsByGame = new Map<number, Map<number, number>>()
+    const scoredRoundsByGame = new Map<number, Set<number>>()
+
+    for (const score of scores) {
+      const round = roundById.get(score.roundId)
+      if (!round) continue
+
+      let totals = totalsByGame.get(round.gameId)
+      if (!totals) {
+        totals = new Map()
+        totalsByGame.set(round.gameId, totals)
+      }
+      totals.set(score.playerId, (totals.get(score.playerId) ?? 0) + score.roundScore)
+
+      let scoredRounds = scoredRoundsByGame.get(round.gameId)
+      if (!scoredRounds) {
+        scoredRounds = new Set()
+        scoredRoundsByGame.set(round.gameId, scoredRounds)
+      }
+      scoredRounds.add(round.id)
+    }
+
+    const result = new Map<number, GameSummary>()
+    for (const game of games) {
+      let leaderName: string | null = null
+      let leaderScore: number | null = null
+      const totals = totalsByGame.get(game.id)
+      if (totals) {
+        for (const [playerId, score] of totals) {
+          if (leaderScore === null || score > leaderScore) {
+            leaderScore = score
+            leaderName = nameById.get(playerId) ?? null
+          }
+        }
+      }
+
+      result.set(game.id, {
+        totalRounds: generateRounds(game.numPlayers, parsePhases(game.phases)).length,
+        playedRounds: scoredRoundsByGame.get(game.id)?.size ?? 0,
+        leaderName,
+        leaderScore
+      })
+    }
+    return result
+  }, [games, rounds, scores, players])
 
   const sortedGames = [...games].sort((a, b) => b.startTime - a.startTime)
 
@@ -57,6 +128,7 @@ export function HomePage() {
               <GameCard
                 key={game.id}
                 game={game}
+                summary={summaries.get(game.id)}
                 onClick={() => (game.isFinished ? navigate(`/game-over/${game.id}`) : navigate(`/game/${game.id}`))}
                 onDelete={() => setGameToDelete(game)}
               />
@@ -137,8 +209,27 @@ function HeroHeaderCard({ gameCount }: { gameCount: number }) {
   )
 }
 
-function GameCard({ game, onClick, onDelete }: { game: Game; onClick: () => void; onDelete: () => void }) {
+function GameCard({
+  game,
+  summary,
+  onClick,
+  onDelete
+}: {
+  game: Game
+  summary?: GameSummary
+  onClick: () => void
+  onDelete: () => void
+}) {
   const theme = useTheme()
+  const progressText = summary && summary.totalRounds > 0
+    ? game.isFinished
+      ? `${summary.playedRounds} de ${summary.totalRounds} rondas`
+      : `Ronda ${Math.min(summary.playedRounds + 1, summary.totalRounds)} de ${summary.totalRounds}`
+    : null
+  const leaderText =
+    summary?.leaderName !== null && summary?.leaderName !== undefined && summary.leaderScore !== null
+      ? `Líder: ${summary.leaderName} (${summary.leaderScore} pts)`
+      : null
   return (
     <Card variant="outlined" sx={{ borderRadius: 3, bgcolor: 'background.paper', borderColor: 'divider', boxShadow: 3 }}>
       <CardActionArea onClick={onClick}>
@@ -172,7 +263,15 @@ function GameCard({ game, onClick, onDelete }: { game: Game; onClick: () => void
               <Typography variant="body2" color="text.secondary">
                 {game.numPlayers} jugadores
               </Typography>
+              <Typography variant="body2" color="text.secondary">
+                · {formatGameDate(game.startTime)}
+              </Typography>
             </Stack>
+            {(progressText || leaderText) && (
+              <Typography variant="body2" color="text.secondary" noWrap sx={{ mt: 0.25 }}>
+                {[progressText, leaderText].filter(Boolean).join(' · ')}
+              </Typography>
+            )}
           </Box>
           <Stack direction="row" alignItems="center">
             <IconButton

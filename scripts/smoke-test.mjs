@@ -54,6 +54,9 @@ async function main() {
     await page.getByRole('button', { name: /^1$/ }).first().click()
     log('predictions 1+1')
 
+    log('reload to verify round draft')
+    await page.reload({ waitUntil: 'load' })
+
     await page.getByRole('button', { name: 'Confirmar predicciones' }).click()
     await page.getByRole('button', { name: /Continuar con bazas reales/ }).click()
     log('predictions confirmed')
@@ -62,12 +65,26 @@ async function main() {
     await page.getByRole('button', { name: /^1$/ }).first().click()
     await page.getByRole('button', { name: /^0$/ }).first().click()
     await page.getByRole('button', { name: 'Confirmar bazas' }).click()
+    await page.getByText('Confirmar ronda').waitFor()
+    await page.getByRole('button', { name: 'Guardar puntos' }).click()
     log('actuals confirmed')
 
     await page.getByText('Resultado de la ronda').waitFor()
     const bodyText = await page.textContent('body')
     if (!bodyText.includes('Siguiente ronda')) throw new Error('missing "Siguiente ronda"')
     log('round scored ok')
+
+    log('edit last round')
+    await page.getByLabel('Historial de rondas').click()
+    await page.getByRole('button', { name: /Corregir ronda 1/ }).click()
+    await page.getByText('Corrigiendo la última ronda').waitFor()
+    await page.getByRole('button', { name: 'Confirmar predicciones' }).click()
+    await page.getByRole('button', { name: /Continuar con bazas reales/ }).click()
+    await page.getByRole('button', { name: 'Confirmar bazas' }).click()
+    await page.getByText('Confirmar ronda').waitFor()
+    await page.getByRole('button', { name: 'Guardar puntos' }).click()
+    await page.getByText('Resultado de la ronda').waitFor()
+    log('last round corrected')
 
     // Persistence check: reload home, game should appear as "En curso"
     await page.goto(BASE, { waitUntil: 'load' })
@@ -84,6 +101,10 @@ async function main() {
     await page.getByText('Clasificación Final').waitFor()
     await page.getByText('Detalle por rondas').waitFor()
     log('game over ok')
+
+    await page.getByRole('button', { name: 'Revancha' }).click()
+    await page.getByText('Preparados para la ronda').waitFor()
+    log('rematch ok')
 
     log('SMOKE TEST OK')
     if (errors.length) {

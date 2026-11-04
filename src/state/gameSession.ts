@@ -1,9 +1,10 @@
 import { create } from 'zustand'
-import type { Game, Player } from '../domain/models'
+import type { Game, Player, Round } from '../domain/models'
 import { getPlayerIdList } from '../domain/models'
 import { parsePhases } from '../domain/gamePhase'
 import { generateRounds } from '../domain/roundGenerator'
 import { calculateScore } from '../domain/scoreCalculator'
+import { clearRoundDraft, loadRoundDraft, saveRoundDraft } from '../data/roundDraft'
 import { useDataStore } from './dataStore'
 
 export enum RoundPhase {
@@ -35,6 +36,7 @@ export interface GameSessionState {
   isFinished: boolean
   isLoading: boolean
   dealerName: string
+  isEditingRound: boolean
 
   loadGame: (gameId: number) => void
   startPredictions: () => void
@@ -46,10 +48,37 @@ export interface GameSessionState {
   nextRound: () => void
   finishGame: (gameId: number) => void
   createRoundIfNeeded: () => void
+  editLastRound: () => void
 }
 
 function dealerNameFor(players: Player[], roundIndex: number): string {
   return players[roundIndex % players.length]?.name ?? ''
+}
+
+function saveCurrentDraft(state: GameSessionState, phase: RoundPhase = state.phase): void {
+  if (!state.game || state.currentRoundId === null) return
+  if (
+    phase !== RoundPhase.COLLECTING_PREDICTIONS &&
+    phase !== RoundPhase.PREDICTIONS_CONFIRMED &&
+    phase !== RoundPhase.COLLECTING_ACTUALS
+  ) {
+    return
+  }
+
+  const predictions: Record<number, number | null> = {}
+  const actuals: Record<number, number | null> = {}
+  for (const pd of state.playerData) {
+    predictions[pd.playerId] = pd.prediction
+    actuals[pd.playerId] = pd.actual
+  }
+
+  saveRoundDraft(state.game.id, {
+    roundId: state.currentRoundId,
+    roundIndex: state.currentRoundIndex,
+    phase,
+    predictions,
+    actuals
+  })
 }
 
 export const useGameSession = create<GameSessionState>((set, get) => ({
@@ -64,6 +93,7 @@ export const useGameSession = create<GameSessionState>((set, get) => ({
   isFinished: false,
   isLoading: true,
   dealerName: '',
+  isEditingRound: false,
 
   loadGame: (gameId) => {
     const data = useDataStore.getState()
@@ -95,25 +125,36 @@ export const useGameSession = create<GameSessionState>((set, get) => ({
       useDataStore.getState().finishGame(game.id)
     }
 
+    const draft = !isComplete && currentRoundId !== null ? loadRoundDraft(gameId) : null
+    const activeDraft =
+      draft && draft.roundId === currentRoundId && draft.roundIndex === currentRoundIndex
+        ? draft
+        : null
+    if (draft && !activeDraft) clearRoundDraft(gameId)
+    const restoredPhase = activeDraft
+      ? (activeDraft.phase as RoundPhase)
+      : RoundPhase.SHOWING_ROUND_INFO
+
     set({
       game,
       players,
       rounds,
       currentRoundIndex,
       currentRoundId,
-      phase: RoundPhase.SHOWING_ROUND_INFO,
+      phase: restoredPhase,
       playerData: players.map((p) => ({
         playerId: p.id,
         playerName: p.name,
-        prediction: null,
-        actual: null,
+        prediction: activeDraft?.predictions[p.id] ?? null,
+        actual: activeDraft?.actuals[p.id] ?? null,
         roundScore: 0,
         totalScore: scoreMap[p.id] ?? 0
       })),
       totalScores: scoreMap,
       isFinished: isComplete,
       isLoading: false,
-      dealerName: dealerNameFor(players, currentRoundIndex)
+      dealerName: dealerNameFor(players, currentRoundIndex),
+      isEditingRound: false
     })
 
     if (!isComplete && currentRoundId === null) {
@@ -142,12 +183,14 @@ export const useGameSession = create<GameSessionState>((set, get) => ({
       phase: RoundPhase.COLLECTING_PREDICTIONS,
       playerData: get().playerData.map((pd) => ({ ...pd, prediction: null }))
     })
+    saveCurrentDraft(get())
   },
 
   updatePrediction: (playerIndex, value) => {
     const playerData = [...get().playerData]
     playerData[playerIndex] = { ...playerData[playerIndex], prediction: value }
     set({ playerData })
+    saveCurrentDraft(get())
   },
 
   confirmPredictions: () => {
@@ -158,19 +201,19 @@ export const useGameSession = create<GameSessionState>((set, get) => ({
     const totalPredicted = s.playerData.reduce((sum, pd) => sum + (pd.prediction ?? 0), 0)
     if (totalPredicted === numCards) return
     set({ phase: RoundPhase.PREDICTIONS_CONFIRMED })
+    saveCurrentDraft(get())
   },
 
   continueToActuals: () => {
-    set({
-      phase: RoundPhase.COLLECTING_ACTUALS,
-      playerData: get().playerData.map((pd) => ({ ...pd, actual: null }))
-    })
+    set({ phase: RoundPhase.COLLECTING_ACTUALS })
+    saveCurrentDraft(get())
   },
 
   updateActual: (playerIndex, value) => {
     const playerData = [...get().playerData]
     playerData[playerIndex] = { ...playerData[playerIndex], actual: value }
     set({ playerData })
+    saveCurrentDraft(get())
   },
 
   confirmActuals: () => {
@@ -197,22 +240,25 @@ export const useGameSession = create<GameSessionState>((set, get) => ({
       return { ...pd, roundScore, totalScore: newTotal }
     })
     data.saveScores(roundId, scoreRows)
+    if (s.game) clearRoundDraft(s.game.id)
 
     set({
       phase: RoundPhase.ROUND_SCORED,
       playerData: updatedPlayerData,
-      totalScores: newTotalScores
+      totalScores: newTotalScores,
+      isEditingRound: false
     })
   },
 
   nextRound: () => {
     const s = get()
     const nextIndex = s.currentRoundIndex + 1
+    if (s.game) clearRoundDraft(s.game.id)
 
     if (nextIndex >= s.rounds.length) {
       const game = s.game
       if (game) useDataStore.getState().finishGame(game.id)
-      set({ isFinished: true, currentRoundIndex: nextIndex })
+      set({ isFinished: true, currentRoundIndex: nextIndex, isEditingRound: false })
       return
     }
 
@@ -226,10 +272,77 @@ export const useGameSession = create<GameSessionState>((set, get) => ({
         actual: null,
         roundScore: 0
       })),
-      dealerName: dealerNameFor(s.players, nextIndex)
+      dealerName: dealerNameFor(s.players, nextIndex),
+      isEditingRound: false
     })
 
     get().createRoundIfNeeded()
+  },
+
+  editLastRound: () => {
+    const s = get()
+    const game = s.game
+    if (!game) return
+
+    const data = useDataStore.getState()
+    const savedRounds = data.getRoundsByGameIdOnce(game.id)
+    let targetIndex = -1
+    let targetRound: Round | null = null
+
+    for (let i = savedRounds.length - 1; i >= 0; i--) {
+      const round = savedRounds[i]
+      if (data.getScoresByRoundIdOnce(round.id).length > 0) {
+        targetIndex = i
+        targetRound = round
+        break
+      }
+    }
+    if (!targetRound) return
+
+    for (let i = savedRounds.length - 1; i > targetIndex; i--) {
+      const round = savedRounds[i]
+      if (data.getScoresByRoundIdOnce(round.id).length === 0) {
+        data.deleteRound(round.id)
+      }
+    }
+
+    const targetScores = data.getScoresByRoundIdOnce(targetRound.id)
+    const scoreByPlayer = new Map(targetScores.map((score) => [score.playerId, score]))
+    const totalScores: Record<number, number> = {}
+    for (const total of data.getTotalScoresByGameId(game.id)) {
+      totalScores[total.playerId] = total.totalScore
+    }
+    for (const score of targetScores) {
+      totalScores[score.playerId] = (totalScores[score.playerId] ?? 0) - score.roundScore
+    }
+
+    const players =
+      s.players.length > 0 ? s.players : data.getPlayersByIds(getPlayerIdList(game))
+    const playerData = players.map((player) => {
+      const score = scoreByPlayer.get(player.id)
+      return {
+        playerId: player.id,
+        playerName: player.name,
+        prediction: score?.predictedTricks ?? null,
+        actual: score?.actualTricks ?? null,
+        roundScore: 0,
+        totalScore: totalScores[player.id] ?? 0
+      }
+    })
+
+    clearRoundDraft(game.id)
+    set({
+      players,
+      currentRoundIndex: targetIndex,
+      currentRoundId: targetRound.id,
+      phase: RoundPhase.COLLECTING_PREDICTIONS,
+      playerData,
+      totalScores,
+      isFinished: false,
+      isEditingRound: true,
+      dealerName: dealerNameFor(players, targetIndex)
+    })
+    saveCurrentDraft(get())
   },
 
   finishGame: (gameId) => {
